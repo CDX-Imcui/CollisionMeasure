@@ -1,0 +1,9 @@
+# 编辑.gitignore添加以下内容
+
+CDX/car
+diff_gaussian_rasterization
+scene
+semantic-segmentation-pytorch-master
+simple-knn
+utils
+colmap_pipeline\car
