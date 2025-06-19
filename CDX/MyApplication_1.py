@@ -14,7 +14,8 @@ from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
 
 from mainwindow import Ui_MainWindow
 from PointCloud import showPointCloud, getPointCloud, mark_point, draw_line_between_points
-from Threads import AddImagesWorker, Parsing_video, ColmapWorker, Align_according_to_LicensePlate_Worker
+from Threads import AddImagesWorker, Parsing_video, ColmapWorker, Align_according_to_LicensePlate_Worker, \
+    SemanticSegmentation_Worker
 
 
 # 清理临时文件
@@ -79,12 +80,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.image_paths = []
         self.LicensePlate = 0.44  # 米
         self.Unit_distance_length = None
+
         # 初始化时设置临时工作目录
         self.WORK_DIR = os.path.join(os.getcwd(), 'WORK_DIR')
         if not os.path.exists(self.WORK_DIR):
             os.makedirs(self.WORK_DIR)
         else:
             cleardir_ine(self.WORK_DIR)
+        self.best_image_id = None
+        self.best_image_name = None
+        self.have_plane = False
+        self.plane = None
 
         self.thumbnail_width = 200  # 设置缩略图宽度
         # self.sidebar_visible = False  # 初始化侧边栏可见状态
@@ -611,9 +617,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             video_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '选择视频', '',
                                                                   '视频文件 (*.mp4)')
             if video_path:
-                frames_dir = os.path.join(self.WORK_DIR, "input")
-                os.makedirs(frames_dir, exist_ok=True)
-                self.Parsing_video_worker = Parsing_video(video_path, frames_dir, self.image_paths)
+                self.Parsing_video_worker = Parsing_video(video_path, self.WORK_DIR, self.image_paths)
                 self.Parsing_video_worker.finished.connect(self.showImages)
                 self.Parsing_video_worker.start()
         else:
@@ -705,32 +709,70 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.ColmapThread is None or not self.ColmapThread.isRunning():  # 进行检查和必要时重新创建。这确保了无论之前的线程是否已经完成，都可以安全地启动新的线程
             self.textEditConsole.clear()  # 清空 textEditConsole
             self.ColmapThread = ColmapWorker(self.WORK_DIR)  # 创建一个新的线程实例
-            self.ColmapThread.finished.connect(self.on_finished)  # 重建完成发出完成信号，然后展示结果
+            self.ColmapThread.finished.connect(self.onColmap_finished)  # 重建完成发出完成信号，然后展示结果
             self.ColmapThread.log_message.connect(self.textEditConsole.append)
             self.ColmapThread.start()
             self.tabWidget.setCurrentIndex(2)  # 跳转到标签页3
         else:
             QtWidgets.QMessageBox.warning(self, "警告", "正在构建，请稍后")
 
-    def on_finished(self, filepath):
-        self.openPointCloud(filepath)  # 打开构建完成的点云文件
-        # 开始校准
-        if not hasattr(self,
-                       'Align_according_to_LicensePlate_Worker') or not self.Align_according_to_LicensePlate_Worker.isRunning():
-            self.Align_according_to_LicensePlate_Worker = Align_according_to_LicensePlate_Worker(self.image_paths,
-                                                                                                 self.WORK_DIR)
-            self.Align_according_to_LicensePlate_Worker.finished.connect(self.calculating_the_scale)
-            self.Align_according_to_LicensePlate_Worker.start()
+    def setPlane(self, have_plane, plane):
+        """设置平面参数"""
+        if isinstance(plane, list) and len(plane) == 4:
+            self.have_plane = have_plane
+            self.plane = np.array(plane, dtype=np.float64)
+            print(f"平面参数已设置为: {self.plane}")
         else:
-            QtWidgets.QMessageBox.warning(self, "警告", "正在解析视频")
+            raise ValueError("平面参数必须是一个包含4个元素的列表或数组")
 
-    def calculating_the_scale(self, real_distances):
+    def onColmap_finished(self, filepath):
+        self.openPointCloud(filepath)  # 打开构建完成的点云文件
+        # 得到平面参数
+        self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(os.path.join(self.WORK_DIR, 'input'),
+                                                                       self.WORK_DIR, self.best_image_id,
+                                                                       self.best_image_name)
+        self.SemanticSegmentation_Worker.finished.connect(self.setPlane)
+        self.SemanticSegmentation_Worker.start()
+        # 设置计时器检查 have_plane 状态
+        self.wait_plane_timer = QtCore.QTimer(self)
+        self.wait_plane_timer.timeout.connect(self.check_plane_status)
+        self.wait_plane_timer.start(1000)  # 每1秒检查一次
+        self.textEditConsole.append("正在等待平面检测完成...")
+
+    def check_plane_status(self):
+        if self.have_plane:
+            self.wait_plane_timer.stop()
+            self.textEditConsole.append("平面检测完成，开始校正对齐...")
+            # 平面检测完成后，开始车牌对齐处理
+            self.Align_according_to_LicensePlate_Worker = Align_according_to_LicensePlate_Worker(self.image_paths,
+                                                                                                 self.WORK_DIR,
+                                                                                                 self.plane)
+            self.Align_according_to_LicensePlate_Worker.finished.connect(self.calculating_the_scale)
+            self.Align_according_to_LicensePlate_Worker.updateView.connect(self.showImages)
+            self.Align_according_to_LicensePlate_Worker.start()
+
+    def calculating_the_scale(self, real_distances, best_image_id, best_image_name):
         """计算比例"""
         if not real_distances:
             QtWidgets.QMessageBox.warning(self, "警告", "没有检测到车牌，请检查图像数据")
             return
         self.Unit_distance_length = np.float64(self.LicensePlate) / np.float64(real_distances)  # X （米/每单位）
-        print(f"根据车牌算出单位距离长度为{ self.Unit_distance_length:.8f} 米/单位")
+        print(f"根据车牌算出单位距离长度为{self.Unit_distance_length:.8f} 米/单位")
+        self.best_image_id = best_image_id
+        self.best_image_name = best_image_name
+
+    def Projection(self, point):
+        """将点投影到平面上"""
+        a, b, c, d = self.plane
+        # 平面方程: ax + by + cz + d = 0
+        x, y, z = point
+        normal = np.array([a, b, c])
+        point = np.array([x, y, z])
+        # 计算从点到平面的有符号距离
+        distance = (a * x + b * y + c * z + d) / (a ** 2 + b ** 2 + c ** 2)
+        # 用距离乘法向量，得到从点垂直指向平面的矢量
+        projection_point = point - distance * normal
+        return projection_point
 
     # 在窗口大小发生变化时被触发
     def resizeEvent(self, event):

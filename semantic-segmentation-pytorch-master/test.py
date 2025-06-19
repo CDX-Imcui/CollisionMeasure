@@ -46,13 +46,16 @@ def visualize_result(data, pred, cfg):
 
     # colorize prediction
     pred_color = colorEncode(pred, colors).astype(np.uint8)
-
-    # aggregate input and save
-    im_vis = np.concatenate((img, pred_color), axis=1)
-
     img_name = info.split('/')[-1]
-    Image.fromarray(im_vis).save(
-        os.path.join(cfg.TEST.result, img_name.replace('.jpg', '_seg.png')))
+    pred_path = os.path.join(cfg.TEST.result, img_name.replace('.jpg', '_seg.png'))
+    cv2.imwrite(str(pred_path), pred_color)
+
+    # # aggregate input and save
+    # im_vis = np.concatenate((img, pred_color), axis=1)
+    #
+    #
+    # Image.fromarray(im_vis).save(
+    #     os.path.join(cfg.TEST.result, img_name.replace('.jpg', '_seg.png')))
 
 
 def resize_keep_aspect_ratio(img, max_size=640):

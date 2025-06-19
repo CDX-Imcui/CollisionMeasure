@@ -3,6 +3,7 @@ import shutil
 import time
 
 import cv2
+import numpy as np
 from PIL import Image
 from PyQt5 import QtCore, QtWidgets
 import cv2
@@ -10,6 +11,7 @@ import hyperlpr3 as lpr3
 
 from CDX.colmap_pipeline import Colmap
 from from_matrix import DepthBackProjector
+from SemanticSegmentation import SemanticSegmentation
 
 
 # def convert_to_jpg(source_dir):
@@ -56,10 +58,12 @@ class AddImagesWorker(QtCore.QThread):
 class Parsing_video(QtCore.QThread):
     finished = QtCore.pyqtSignal(list)
 
-    def __init__(self, video_path, frames_dir, image_paths):
+    def __init__(self, video_path, WORK_DIR, image_paths):
         super(Parsing_video, self).__init__()
         self.video_path = video_path
-        self.frames_dir = frames_dir
+        self.WORK_DIR = WORK_DIR
+        self.frames_dir = os.path.join(WORK_DIR, "input")
+        os.makedirs(self.frames_dir, exist_ok=True)
         self.image_paths = image_paths
 
     def resize_keep_aspect_ratio(self, img, max_size=1280):
@@ -82,6 +86,7 @@ class Parsing_video(QtCore.QThread):
         step = max(total_frames // 100, 1)  # 计算帧间隔
         frame_count = 0
         saved_count = 0
+
         while True:
             success, frame = video_capture.read()
             if not success:
@@ -112,7 +117,7 @@ class ColmapWorker(QtCore.QThread):
         try:
             self.log_message.emit('feature extract')  # 发送进度信息
             print('feature extract')
-            start=time.time()
+            start = time.time()
             self.Colmap.feature_extraction()
             self.log_message.emit('feature matching')  # 发送进度信息
             print('feature matching')
@@ -139,13 +144,119 @@ class ColmapWorker(QtCore.QThread):
             self.log_message.emit(str(e))
 
 
-class Align_according_to_LicensePlate_Worker(QtCore.QThread):
-    finished = QtCore.pyqtSignal(float)
+from sklearn.neighbors import NearestNeighbors
+from sklearn.linear_model import RANSACRegressor
 
-    def __init__(self, images, WORK_DIR):
-        super(Align_according_to_LicensePlate_Worker, self).__init__()
-        self.image_paths = images
+
+class SemanticSegmentation_Worker(QtCore.QThread):
+    finished = QtCore.pyqtSignal(bool, [float, float, float, float])  # 成功与否，平面方程系数
+    log_message = QtCore.pyqtSignal(str)
+
+    def __init__(self, images_path, WORK_DIR, best_image_id, best_image_name):
+        super(SemanticSegmentation_Worker, self).__init__()
+        self.images_path = images_path
+        self.best_image_id = best_image_id
+        self.best_image_name = best_image_name
         self.WORK_DIR = WORK_DIR
+
+    def remove_outliers_statistical(self, point_array, k=10, std_ratio=2.0):
+        """
+        使用统计滤波去除离群点
+        :param point_array: numpy array, shape (N, 3)
+        :param k: 邻居数量
+        :param std_ratio: 距离标准差倍数阈值
+        :return: 去噪后的点集
+        """
+        if not isinstance(point_array, np.ndarray):
+            point_array = np.array(point_array)
+
+        neighbors = NearestNeighbors(n_neighbors=k + 1).fit(point_array)
+        distances, _ = neighbors.kneighbors(point_array)
+        mean_dists = distances[:, 1:].mean(axis=1)  # 去掉自身
+
+        threshold = mean_dists.mean() + std_ratio * mean_dists.std()
+        mask = mean_dists < threshold
+        return point_array[mask]
+
+    def fit_plane_ransac(self, points, residual_threshold=0.01):
+        """
+        对去噪后的三维点进行 RANSAC 平面拟合
+        ax + by + cz + d = 0
+        :param points: numpy array, shape (N, 3)
+        :return: normal vector (a, b, c), d, inlier mask
+        """
+        points = np.array(points)
+        X = points[:, :2]
+        y = points[:, 2]
+
+        model = RANSACRegressor(residual_threshold=residual_threshold)
+        model.fit(X, y)
+
+        a, b = model.estimator_.coef_
+        c = -1.0
+        d = model.estimator_.intercept_
+
+        # ax + by + cz + d = 0 → ax + by - z + d = 0 → normal = [a, b, -1]
+        normal = np.array([a, b, c])
+        norm = np.linalg.norm(normal)
+        normal /= norm
+        d /= norm
+
+        # 内点掩码
+        inlier_mask = model.inlier_mask_
+        return normal, d, inlier_mask
+
+    def run(self):
+        try:
+            segmentation = SemanticSegmentation(self.images_path)
+            images = segmentation.run()
+            image = images[self.best_image_id]  # 获取最优图像
+            FLOOR_COLOR = [140, 140, 140]  # 注意顺序是 RGB
+            ground_pixels = []
+
+            # 根据分割图像，20个像素为步长遍历获取地面的特征点集合
+            for y in range(0, image.shape[0], 20):
+                for x in range(0, image.shape[1], 20):
+                    pixel = image[y, x, :]  # 获取该点 RGB
+                    if np.array_equal(pixel, FLOOR_COLOR):
+                        ground_pixels.append((x, y))  # 记录图像坐标
+
+            projector = DepthBackProjector(self.WORK_DIR)
+            projector.load_data(self.best_image_name)
+            # 遍历ground_pixels，得到三维坐标列表
+            _3Dcoordinates = []
+            for pixel in ground_pixels:
+                l, r = projector.pixel_to_world(pixel[0], pixel[1])
+                if (isinstance(l, np.ndarray) and l.size == 0) or (
+                        isinstance(r, np.ndarray) and r.size == 0) or np.array_equal(l, -1) or np.array_equal(r,
+                                                                                                              -1):  # 如果像素点超出范围或深度无效
+                    continue
+                x, y, z = l
+                _3Dcoordinates.append([x, y, z])  # 计算每个点的三维坐标
+
+            # 根据_3Dcoordinates地面特定点拟合地面方程
+            cleaned_points = self.remove_outliers_statistical(_3Dcoordinates, k=10, std_ratio=2.0)
+            normal, d, inliers = self.fit_plane_ransac(cleaned_points)
+            a, b, c = normal
+            print(f"RANSAC 拟合平面: {a:.4f}x + {b:.4f}y + {c:.4f}z + {d:.4f} = 0")
+            print(
+                f"内点数量: {np.sum(inliers)}, 平均拟合误差: {np.mean(np.abs(cleaned_points[inliers] @ normal + d)):.4f}")
+
+            self.finished.emit(True, [a, b, c, d])
+        except Exception as e:
+            self.log_message.emit(str(e))
+            self.finished.emit(False)
+
+
+class Align_according_to_LicensePlate_Worker(QtCore.QThread):
+    finished = QtCore.pyqtSignal(float, int, str)
+    updateView = QtCore.pyqtSignal(list)
+
+    def __init__(self, image_paths, WORK_DIR, plane):
+        super(Align_according_to_LicensePlate_Worker, self).__init__()
+        self.image_paths = image_paths
+        self.WORK_DIR = WORK_DIR
+        self.plane = plane
 
     def get_long_edge_points(self, box):
         x1, y1, x2, y2 = box
@@ -160,12 +271,15 @@ class Align_according_to_LicensePlate_Worker(QtCore.QThread):
 
     def run(self):
         catcher = lpr3.LicensePlateCatcher()
-        projector = DepthBackProjector(self.WORK_DIR)
+        projector = DepthBackProjector(self.WORK_DIR, self.plane)
         # distances = []
         # 存储误差最小的距离数据
         real_distances = None
         min_error = float('inf')  # 初始化为最大值
+        best_image_id = None
+        best_image_name = None
         # 遍历image
+        paths_to_remove = []
         for image_path in self.image_paths:
             result = catcher(cv2.imread(image_path))  # [['闽D2ER09', 0.99985033, 0, [479, 396, 578, 430]]]
             if not result or result[0][1] < 0.5:
@@ -173,7 +287,8 @@ class Align_according_to_LicensePlate_Worker(QtCore.QThread):
             box = result[0][3]
             points = self.get_long_edge_points(box)
 
-            if projector.load_data(os.path.basename(image_path)) == -1:  # 图像数据不在images_bin
+            if projector.load_data(os.path.basename(image_path)) is False:  # 图像数据不在images_bin
+                paths_to_remove.append(image_path)  # 记录需要删除的路径
                 continue
             result = projector.compute_distance(points[0], points[1])  # 计算车牌两个点之间的距离
 
@@ -185,5 +300,26 @@ class Align_according_to_LicensePlate_Worker(QtCore.QThread):
             if error < min_error:
                 min_error = error
                 real_distances = distance
-                print(f"更新最小误差: {min_error}, 对应距离: {real_distances}, 图像: {os.path.basename(image_path)}")
-        self.finished.emit(real_distances)
+                best_image_name = os.path.basename(image_path)  # 'image_00059.jpg'
+                best_image_id = best_image_name.split('_')[1].split('.')[0]  # '004'
+                print(f"更新最小误差: {min_error}, 对应距离: {real_distances}, 图像: {best_image_name}")
+        # 循环结束后，一次性删除所有无效路径
+        for path in paths_to_remove:
+            if path in self.image_paths:
+                self.image_paths.remove(path)
+        self.updateView.emit(self.image_paths)  # 更新视图
+        self.finished.emit(real_distances, int(best_image_id), best_image_name)
+
+
+class Choose_Point_Worker(QtCore.QThread):
+    finished = QtCore.pyqtSignal(list)
+
+    def __init__(self, images, WORK_DIR):
+        super(Choose_Point_Worker, self).__init__()
+        self.images = images
+        self.WORK_DIR = WORK_DIR
+
+    def run(self):
+        self.finished.emit(self.images)
+        for file_path in self.images:
+            shutil.copy(file_path, self.WORK_DIR)

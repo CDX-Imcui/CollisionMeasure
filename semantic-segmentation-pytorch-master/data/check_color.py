@@ -3,11 +3,11 @@ from scipy.io import loadmat
 import csv
 
 # Load the colors
-colors = loadmat('data/color150.mat')['colors']
+colors = loadmat('color150.mat')['colors']
 
 # Load the object names
 names = {}
-with open('data/object150_info.csv') as f:
+with open('object150_info.csv') as f:
     reader = csv.reader(f)
     next(reader)  # Skip header row
     for row in reader:
@@ -31,3 +31,6 @@ for i in range(1, 151):
     elif i - 1 >= len(colors):
         print(f"Warning: Color for Object ID {i} (index {i-1}) out of bounds in color150.mat")
 
+
+# Object ID: 7, Name: road, Color (RGB): [140 140 140]
+# Object ID: 49, Name: skyscraper, Color (RGB): [140 140 140]
