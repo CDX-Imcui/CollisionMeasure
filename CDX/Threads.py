@@ -149,14 +149,13 @@ from sklearn.linear_model import RANSACRegressor
 
 
 class SemanticSegmentation_Worker(QtCore.QThread):
-    finished = QtCore.pyqtSignal(bool, [float, float, float, float])  # 成功与否，平面方程系数
+    finished = QtCore.pyqtSignal(bool, list, int, str, list)  # 成功与否，平面方程系数
     log_message = QtCore.pyqtSignal(str)
+    updateView = QtCore.pyqtSignal(list)
 
-    def __init__(self, images_path, WORK_DIR, best_image_id, best_image_name):
+    def __init__(self, image_paths, WORK_DIR):
         super(SemanticSegmentation_Worker, self).__init__()
-        self.images_path = images_path
-        self.best_image_id = best_image_id
-        self.best_image_name = best_image_name
+        self.image_paths = image_paths
         self.WORK_DIR = WORK_DIR
 
     def remove_outliers_statistical(self, point_array, k=10, std_ratio=2.0):
@@ -206,11 +205,61 @@ class SemanticSegmentation_Worker(QtCore.QThread):
         inlier_mask = model.inlier_mask_
         return normal, d, inlier_mask
 
+    def get_long_edge_points(self, box):
+        x1, y1, x2, y2 = box
+        width = abs(x2 - x1)
+        height = abs(y2 - y1)
+        if width >= height:
+            # 水平长边，返回上边两个顶点
+            return [(x1, y1), (x2, y1)]
+        else:
+            # 垂直长边，返回左边两个顶点
+            return [(x1, y1), (x1, y2)]
+
     def run(self):
         try:
-            segmentation = SemanticSegmentation(self.images_path)
+            catcher = lpr3.LicensePlateCatcher()
+            projector = DepthBackProjector(self.WORK_DIR)
+            best_image_id = None
+            best_image_name = None
+            best_points = None
+            min_error = float('inf')  # 初始化为最大值
+
+            # 遍历image
+            paths_to_remove = []
+            for image_path in self.image_paths:
+                result = catcher(cv2.imread(image_path))  # [['闽D2ER09', 0.99985033, 0, [479, 396, 578, 430]]]
+                if not result or result[0][1] < 0.5:
+                    continue
+                box = result[0][3]
+                points = self.get_long_edge_points(box)
+
+                if projector.load_data(os.path.basename(image_path)) is False:  # 图像数据不在images_bin
+                    paths_to_remove.append(image_path)  # 记录需要删除的路径
+                    continue
+                result = projector.compute_distance(points[0], points[1])  # 计算车牌两个点之间的距离
+
+                # 检查返回值类型，处理计算失败的情况
+                if isinstance(result, int) and result == -1:
+                    continue
+                distance, error = result  # 如果计算成功，解包返回的距离和误差
+
+                if error < min_error:
+                    min_error = error
+                    real_distances = distance
+                    best_image_name = os.path.basename(image_path)  # 'image_00059.jpg'
+                    best_image_id = best_image_name.split('_')[1].split('.')[0]  # '004'
+                    best_points = points  # 记录最佳车牌点对 [(x1, y1), (x1, y2)]
+                    print(f"更新最小误差: {min_error}, 对应距离: {real_distances}, 图像: {best_image_name}")
+            # 循环结束后，一次性删除所有无效路径
+            for path in paths_to_remove:
+                if path in self.image_paths:
+                    self.image_paths.remove(path)
+
+            ####################################
+            segmentation = SemanticSegmentation(self.image_paths)
             images = segmentation.run()
-            image = images[self.best_image_id]  # 获取最优图像
+            image = images[best_image_id]  # 获取最优图像
             FLOOR_COLOR = [140, 140, 140]  # 注意顺序是 RGB
             ground_pixels = []
 
@@ -221,8 +270,7 @@ class SemanticSegmentation_Worker(QtCore.QThread):
                     if np.array_equal(pixel, FLOOR_COLOR):
                         ground_pixels.append((x, y))  # 记录图像坐标
 
-            projector = DepthBackProjector(self.WORK_DIR)
-            projector.load_data(self.best_image_name)
+            projector.load_data(best_image_name)
             # 遍历ground_pixels，得到三维坐标列表
             _3Dcoordinates = []
             for pixel in ground_pixels:
@@ -242,73 +290,28 @@ class SemanticSegmentation_Worker(QtCore.QThread):
             print(
                 f"内点数量: {np.sum(inliers)}, 平均拟合误差: {np.mean(np.abs(cleaned_points[inliers] @ normal + d)):.4f}")
 
-            self.finished.emit(True, [a, b, c, d])
+            self.finished.emit(True, [a, b, c, d], int(best_image_id), best_image_name, best_points)
+            self.updateView.emit(self.image_paths)  # 更新视图
         except Exception as e:
             self.log_message.emit(str(e))
-            self.finished.emit(False)
+            # self.finished.emit(False, [0, 0, 0, 0], -1, "",[])  # 如果发生错误，返回一个无效的平面方程系数
 
 
 class Align_according_to_LicensePlate_Worker(QtCore.QThread):
-    finished = QtCore.pyqtSignal(float, int, str)
-    updateView = QtCore.pyqtSignal(list)
+    finished = QtCore.pyqtSignal(float)
 
-    def __init__(self, image_paths, WORK_DIR, plane):
+    def __init__(self, WORK_DIR, plane, best_image_name, best_points):
         super(Align_according_to_LicensePlate_Worker, self).__init__()
-        self.image_paths = image_paths
         self.WORK_DIR = WORK_DIR
         self.plane = plane
-
-    def get_long_edge_points(self, box):
-        x1, y1, x2, y2 = box
-        width = abs(x2 - x1)
-        height = abs(y2 - y1)
-        if width >= height:
-            # 水平长边，返回上边两个顶点
-            return [(x1, y1), (x2, y1)]
-        else:
-            # 垂直长边，返回左边两个顶点
-            return [(x1, y1), (x1, y2)]
+        self.best_image_name = best_image_name
+        self.best_points = best_points
 
     def run(self):
-        catcher = lpr3.LicensePlateCatcher()
-        projector = DepthBackProjector(self.WORK_DIR, self.plane)
-        # distances = []
-        # 存储误差最小的距离数据
-        real_distances = None
-        min_error = float('inf')  # 初始化为最大值
-        best_image_id = None
-        best_image_name = None
-        # 遍历image
-        paths_to_remove = []
-        for image_path in self.image_paths:
-            result = catcher(cv2.imread(image_path))  # [['闽D2ER09', 0.99985033, 0, [479, 396, 578, 430]]]
-            if not result or result[0][1] < 0.5:
-                continue
-            box = result[0][3]
-            points = self.get_long_edge_points(box)
-
-            if projector.load_data(os.path.basename(image_path)) is False:  # 图像数据不在images_bin
-                paths_to_remove.append(image_path)  # 记录需要删除的路径
-                continue
-            result = projector.compute_distance(points[0], points[1])  # 计算车牌两个点之间的距离
-
-            # 检查返回值类型，处理计算失败的情况
-            if isinstance(result, int) and result == -1:
-                continue
-            distance, error = result  # 如果计算成功，解包返回的距离和误差
-
-            if error < min_error:
-                min_error = error
-                real_distances = distance
-                best_image_name = os.path.basename(image_path)  # 'image_00059.jpg'
-                best_image_id = best_image_name.split('_')[1].split('.')[0]  # '004'
-                print(f"更新最小误差: {min_error}, 对应距离: {real_distances}, 图像: {best_image_name}")
-        # 循环结束后，一次性删除所有无效路径
-        for path in paths_to_remove:
-            if path in self.image_paths:
-                self.image_paths.remove(path)
-        self.updateView.emit(self.image_paths)  # 更新视图
-        self.finished.emit(real_distances, int(best_image_id), best_image_name)
+        projector = DepthBackProjector(self.WORK_DIR, self.plane)  # 投影情况下
+        projector.load_data(self.best_image_name)
+        real_distances, error = projector.compute_distance(self.best_points[0], self.best_points[1])  # 计算车牌两个点之间的距离
+        self.finished.emit(real_distances)
 
 
 class Choose_Point_Worker(QtCore.QThread):

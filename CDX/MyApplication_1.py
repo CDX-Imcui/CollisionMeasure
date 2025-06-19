@@ -9,9 +9,12 @@ import vtk
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import QSettings, pyqtSignal, QObject
 from PyQt5.QtWidgets import QFrame, QLabel, QVBoxLayout, QPushButton, QInputDialog, QHBoxLayout
+from matplotlib import pyplot as plt
 from vtkmodules.qt.QVTKRenderWindowInteractor import QVTKRenderWindowInteractor
 from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
 
+from CDX.Clickable_Label import Clickable_Label
+from CDX.from_matrix import DepthBackProjector
 from mainwindow import Ui_MainWindow
 from PointCloud import showPointCloud, getPointCloud, mark_point, draw_line_between_points
 from Threads import AddImagesWorker, Parsing_video, ColmapWorker, Align_according_to_LicensePlate_Worker, \
@@ -89,6 +92,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             cleardir_ine(self.WORK_DIR)
         self.best_image_id = None
         self.best_image_name = None
+        self.best_points = None
         self.have_plane = False
         self.plane = None
 
@@ -646,9 +650,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.clearLayout(self.horizontalLayoutImages)
         """同时更新 缩略图标签页、图像标签页"""
         for idx, file_path in enumerate(file_paths):
-            label = QtWidgets.QLabel()  # 每个缩略图是一个QLabel
-            pixmap = QtGui.QPixmap(file_path)  # 从文件路径加载图像 QPixmap是原始图像文件的缩小版
+            # label = QtWidgets.QLabel()  # 每个缩略图是一个QLabel
+            label = Clickable_Label(file_path)  # 创建一个可点击的标签
+            label.clicked.connect(self.on_thumbnail_clicked_toPoint)
+            # label.setAlignment(QtCore.Qt.AlignCenter)  # 设置标签内容居中
+            # label.setStyleSheet("border: 1px solid #ccc;")  # 设置边框样式
+            # label.setFixedSize(self.thumbnail_width, self.thumbnail_width)  #
+            label.setObjectName(f"{os.path.basename(file_path)}")
+            label.setToolTip(f"{os.path.basename(file_path)}")  # 设置鼠标悬停时显示的提示信息
 
+            pixmap = QtGui.QPixmap(file_path)  # 缩小版的原始图像文件
             scaled_pixmap = pixmap.scaled(self.thumbnail_width, self.thumbnail_width, QtCore.Qt.KeepAspectRatio)
             label.setPixmap(scaled_pixmap)
             i = self.gridLayoutThumbnails.count()
@@ -671,6 +682,100 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                      range(self.horizontalLayoutImages.count())])
         self.scrollAreaContentImages.setMinimumWidth(width)
         self.scrollAreaContentImages.adjustSize()
+
+    def on_thumbnail_clicked_toPoint(self, image_path):
+        image_name = os.path.basename(image_path)
+
+        PointCoordinate = []
+        ChaCoordinate = []
+
+        # cv2.imread 默认以 BGR 格式读取图像，将图片从 BGR 转换为 RGB，以便 matplotlib 正确显示颜色
+        img = cv2.imread(image_path)
+        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # 创建 Matplotlib 图形窗口，并设置响应更快的后端
+        plt.switch_backend('Qt5Agg')  # 使用Qt5Agg图形后端
+        fig, ax = plt.subplots(figsize=(10, 8))  # 设置更大的图像尺寸
+
+        # 创建主图形区域和按钮区域
+        gs = fig.add_gridspec(2, 1, height_ratios=[9, 1])  # 9:1的高度比例分配
+        ax = fig.add_subplot(gs[0])  # 主图形区域
+        button_ax = fig.add_subplot(gs[1])  # 按钮区域
+
+        ax.imshow(img_rgb)
+        ax.axis('off')  # 关闭坐标轴
+
+        if self.Unit_distance_length is None:
+            return
+
+        projector = DepthBackProjector(self.WORK_DIR, self.plane)
+        projector.load_data(image_name)
+
+        def onclick(event):
+            if event.xdata is not None and event.ydata is not None:
+                # 获取点击的像素坐标 (x, y)
+                # event.xdata 和 event.ydata 是浮点数，需要转换为整数
+                # 对于图像，y 是行，x 是列
+                x = int(event.xdata + 0.5)  # 添加0.5并取整以提高精度
+                y = int(event.ydata + 0.5)
+
+                if 0 <= y < img.shape[0] and 0 <= x < img.shape[1]:  # 确保坐标在图片范围内
+                    # b, g, r = img[y, x]  # 获取该像素的颜色值
+                    # print(f"点击坐标 (X={x}, Y={y}) 的像素颜色 (RGB): ({r}, {g}, {b})")
+
+                    ax.plot(x, y, 'r+', markersize=10)  # 在图像上显示十字标记
+                    plt.draw()  # 立即更新绘图
+                    t, error = projector.pixel_to_world(x, y)  # t:[x, y, z]（未经投影的点）
+                    PointCoordinate.append(t)  # 将三维坐标添加到列表中
+                    ChaCoordinate.append([x, y])
+                    print("三维坐标 (world):", np.round(PointCoordinate, 4))
+                    # PointCoordinate中每有两个点，就绘制一条线，并标上距离
+                    if len(PointCoordinate) % 2 == 0:
+                        # 绘制线段
+                        p1 = PointCoordinate[-2]
+                        p2 = PointCoordinate[-1]
+                        line = projector.compute_distance(p1, p2)  # 计算距离
+                        real_distance = line * self.Unit_distance_length  # 恢复成现实单位
+
+                        ax.plot([ChaCoordinate[-2][0], ChaCoordinate[-1][0]],
+                                [ChaCoordinate[-2][1], ChaCoordinate[-1][1]], 'g-')
+                        # 计算线段中点位置用于放置距离标签
+                        mid_x = (ChaCoordinate[-2][0] + ChaCoordinate[-1][0]) / 2
+                        mid_y = (ChaCoordinate[-2][1] + ChaCoordinate[-1][1]) / 2
+                        # 在线段中点显示距离值
+                        ax.text(mid_x, mid_y, f"{real_distance:.2f}", color='red', fontsize=10,
+                                backgroundcolor='white', ha='center', va='center')
+
+        cid = fig.canvas.mpl_connect('button_press_event', onclick)
+
+        def clear_points():
+            """清空选点"""
+            nonlocal PointCoordinate, ChaCoordinate
+            PointCoordinate = []
+            ChaCoordinate = []
+            # 重新读取并显示图片以清除所有标记
+            ax.clear()
+            img_rgb = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+            ax.imshow(img_rgb)
+            ax.axis('off')
+            plt.draw()  # 立即更新图像
+
+        def on_key(event):
+            if event.key == 'q':
+                plt.close(fig)
+
+        fig.canvas.mpl_connect('key_press_event', on_key)
+        # 创建按钮的位置
+        button_width = 0.15
+        clear_button_pos = [0.1, 0.2, button_width, 0.6]
+        # 添加按钮
+        clear_button = plt.axes(
+            (clear_button_pos[0], clear_button_pos[1], clear_button_pos[2], clear_button_pos[3]))
+        bclear = plt.Button(clear_button, '清空选点')
+
+        bclear.on_clicked(lambda event: clear_points())
+        plt.tight_layout()  # 设置紧凑布局以最大化图像显示区域
+        # plt.subplots_adjust(left=0.05, right=0.95, top=0.95, bottom=0.05)  # 调整子图之间的间距
+        plt.show(block=True)  # 确保阻塞式显示
 
     def updateGridLayout(self):
         """重新计算并设置每行的缩略图数量，确保缩略图的布局始终适应当前窗口大小"""
@@ -716,22 +821,27 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             QtWidgets.QMessageBox.warning(self, "警告", "正在构建，请稍后")
 
-    def setPlane(self, have_plane, plane):
+    def setPlane(self, have_plane, plane, best_image_id, best_image_name, best_points):
         """设置平面参数"""
-        if isinstance(plane, list) and len(plane) == 4:
+        if isinstance(plane, list) and len(plane) == 4 and have_plane is True:
             self.have_plane = have_plane
             self.plane = np.array(plane, dtype=np.float64)
             print(f"平面参数已设置为: {self.plane}")
+            self.best_image_id = best_image_id
+            self.best_image_name = best_image_name
+            self.best_points = best_points
         else:
             raise ValueError("平面参数必须是一个包含4个元素的列表或数组")
 
     def onColmap_finished(self, filepath):
         self.openPointCloud(filepath)  # 打开构建完成的点云文件
         # 得到平面参数
-        self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(os.path.join(self.WORK_DIR, 'input'),
-                                                                       self.WORK_DIR, self.best_image_id,
-                                                                       self.best_image_name)
+        # self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(os.path.join(self.WORK_DIR, 'input'),
+        #                                                                self.WORK_DIR, self.best_image_id,
+        #                                                                self.best_image_name)
+        self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(self.image_paths, self.WORK_DIR)
         self.SemanticSegmentation_Worker.finished.connect(self.setPlane)
+        self.SemanticSegmentation_Worker.updateView.connect(self.showImages)
         self.SemanticSegmentation_Worker.start()
         # 设置计时器检查 have_plane 状态
         self.wait_plane_timer = QtCore.QTimer(self)
@@ -744,22 +854,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.wait_plane_timer.stop()
             self.textEditConsole.append("平面检测完成，开始校正对齐...")
             # 平面检测完成后，开始车牌对齐处理
-            self.Align_according_to_LicensePlate_Worker = Align_according_to_LicensePlate_Worker(self.image_paths,
-                                                                                                 self.WORK_DIR,
-                                                                                                 self.plane)
+            self.Align_according_to_LicensePlate_Worker = Align_according_to_LicensePlate_Worker(
+                self.WORK_DIR,
+                self.plane,self.best_image_name, self.best_points)
             self.Align_according_to_LicensePlate_Worker.finished.connect(self.calculating_the_scale)
-            self.Align_according_to_LicensePlate_Worker.updateView.connect(self.showImages)
             self.Align_according_to_LicensePlate_Worker.start()
 
-    def calculating_the_scale(self, real_distances, best_image_id, best_image_name):
+    def calculating_the_scale(self, real_distances):
         """计算比例"""
         if not real_distances:
             QtWidgets.QMessageBox.warning(self, "警告", "没有检测到车牌，请检查图像数据")
             return
         self.Unit_distance_length = np.float64(self.LicensePlate) / np.float64(real_distances)  # X （米/每单位）
         print(f"根据车牌算出单位距离长度为{self.Unit_distance_length:.8f} 米/单位")
-        self.best_image_id = best_image_id
-        self.best_image_name = best_image_name
 
     def Projection(self, point):
         """将点投影到平面上"""
