@@ -1,9 +1,13 @@
 # 编辑.gitignore添加以下内容
 
 CDX/car
+CDX/WORK_DIR
 diff_gaussian_rasterization
 scene
-semantic-segmentation-pytorch-master
+semantic-segmentation-pytorch-master/5857_images
+semantic-segmentation-pytorch-master/car_images
+semantic-segmentation-pytorch-master/*.jpg
+semantic-segmentation-pytorch-master/*.png
 simple-knn
 utils
 colmap_pipeline\car

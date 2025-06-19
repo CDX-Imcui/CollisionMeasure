@@ -14,7 +14,7 @@ from vtkmodules.vtkInteractionStyle import vtkInteractorStyleTrackballCamera
 
 from mainwindow import Ui_MainWindow
 from PointCloud import showPointCloud, getPointCloud, mark_point, draw_line_between_points
-from Threads import AddImagesWorker
+from Threads import AddImagesWorker, Parsing_video, ColmapWorker, Align_according_to_LicensePlate_Worker
 
 
 # 清理临时文件
@@ -74,9 +74,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__()
         self.setupUi(self)
         self.add_ui()
-
+        self.ColmapThread = None
+        self.SplatThread = None
+        self.image_paths = []
+        self.LicensePlate = 0.44  # 米
+        self.Unit_distance_length = None
         # 初始化时设置临时工作目录
-        self.WORK_DIR = os.path.join(os.getcwd(), 'WORK_DIR', 'tmp')
+        self.WORK_DIR = os.path.join(os.getcwd(), 'WORK_DIR')
         if not os.path.exists(self.WORK_DIR):
             os.makedirs(self.WORK_DIR)
         else:
@@ -103,9 +107,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.reference_pair_index = -1  # 参考点对的索引，-1表示未设置
 
         # 连接信号和槽
-        self.actionOpenPointCloud.triggered.connect(self.open_point_cloud)
+        self.actionOpenPointCloud.triggered.connect(self.openPointCloud)
         self.actionRecentFiles.triggered.connect(self.show_recent_files)
         self.actionExit.triggered.connect(self.close)
+        self.actionReconstruct.triggered.connect(self.startColmap)
         self.mesure_distance.triggered.connect(self.start_measure_distance)
         # 初始化最近文件菜单
         self.updateRecentFilesMenu()
@@ -114,6 +119,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def add_ui(self):
         self.setWindowTitle("点云测距")
+        self.actionReconstruct = QtWidgets.QAction("开始构建", self)
+        self.menubar.addAction(self.actionReconstruct)
         self.mesure_distance = QtWidgets.QAction("开始测距", self)
         self.menubar.addAction(self.mesure_distance)
 
@@ -142,7 +149,23 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.verticalLayoutThumbnails = QtWidgets.QVBoxLayout(self.tabThumbnails)
         self.verticalLayoutThumbnails.addWidget(self.scrollAreaThumbnails)
         self.tabWidget.addTab(self.tabThumbnails, "缩略图")
-        # 标签页1 - 点云显示
+
+        # 标签页1 - 图像
+        self.tabImages = QtWidgets.QWidget()
+        self.tabImages.setObjectName("tabImages")
+        self.horizontalLayout = QtWidgets.QHBoxLayout(self.tabImages)
+        self.scrollAreaImages = QtWidgets.QScrollArea(self.tabImages)
+        self.scrollAreaImages.setWidgetResizable(True)
+        self.scrollAreaImages.setObjectName("scrollAreaImages")
+        self.scrollAreaContentImages = QtWidgets.QWidget()
+        self.scrollAreaContentImages.setObjectName("scrollAreaContentImages")
+        self.horizontalLayoutImages = QtWidgets.QHBoxLayout(self.scrollAreaContentImages)  # 水平布局管理器
+        self.scrollAreaContentImages.setLayout(self.horizontalLayoutImages)
+        self.scrollAreaImages.setWidget(self.scrollAreaContentImages)
+        self.horizontalLayout.addWidget(self.scrollAreaImages)
+        self.tabWidget.addTab(self.tabImages, "图像")
+
+        # 标签页2 - 点云显示
         self.tabPointCloud = QtWidgets.QWidget()
         self.tabPointCloud.setObjectName("tabPointCloud")
         self.tabWidget.addTab(self.tabPointCloud, "点云")
@@ -162,6 +185,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.vtkWidget.Initialize()  # 初始化 vtkWidget
         # 存储渲染器和交互器的引用，以便在后续操作中使用
         self.renderWindowInteractor = self.vtkWidget.GetRenderWindow().GetInteractor()
+        # 显示控制台信息
+        self.textEditConsole = QtWidgets.QTextEdit(self.tabPointCloud)
+        self.textEditConsole.setObjectName("textEditConsole")
+        self.textEditConsole.setReadOnly(True)  # 设置 QTextEdit 为只读
+        self.main_horizontalLayout.addWidget(self.textEditConsole, 2)  # 伸展因子1
+        # 确保布局填满整个tab
+        self.tabPointCloud.setLayout(self.main_horizontalLayout)
 
         # 右边侧边栏（可隐藏）
         self.right_sidebar = QFrame()
@@ -197,7 +227,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         MainWindow.setWindowTitle(_translate("MainWindow", "图像密集匹配系统"))
         MainWindow.setWindowIcon(QtGui.QIcon('cdx.png'))
 
-    def open_point_cloud(self, file_path=None):
+    def openPointCloud(self, file_path=None):
         # 对 file_path 要判断，从对话框选择打开是空的，需要文件对话框���从最���是指定了路径，需要跳过文件对话框
         if not file_path:
             options = QtWidgets.QFileDialog.Options()
@@ -576,35 +606,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print("未拾取到点")
 
     def addVideo(self):
-        cleardir_ine(self.WORK_DIR)
-        video_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '选择视频', '',
-                                                           '视频文件 (*.mp4)')
-        if video_path:
-            frames_dir = os.path.join(self.WORK_DIR, "input")
-            os.makedirs(frames_dir, exist_ok=True)
-            images = []
-            video_capture = cv2.VideoCapture(video_path)
-            if not video_capture.isOpened():
-                QtWidgets.QMessageBox.warning(self, "错误", f"无法打开视频: {video_path}")
-                return
-            total_frames = int(video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
-            step = max(total_frames // 120, 1)  # 计算帧间隔，保证不超过100张
-            frame_count = 0
-            saved_count = 0
-            while True:
-                success, frame = video_capture.read()
-                if not success:
-                    break
-                # 每隔几帧保存一次(可以根据需要调整间隔)
-                if frame_count % step == 0:
-                    frame_path = os.path.join(frames_dir, f"frame_{frame_count:05d}.jpg")
-                    cv2.imwrite(frame_path, frame)
-                    images.append(frame_path)
-                    saved_count += 1
-                frame_count += 1
-            video_capture.release()
-            print(f"从视频中提取了 {len(images)} 帧")
-            self.showImages(images)
+        if not hasattr(self, 'Parsing_video_worker') or not self.Parsing_video_worker.isRunning():
+            cleardir_ine(self.WORK_DIR)
+            video_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '选择视频', '',
+                                                                  '视频文件 (*.mp4)')
+            if video_path:
+                frames_dir = os.path.join(self.WORK_DIR, "input")
+                os.makedirs(frames_dir, exist_ok=True)
+                self.Parsing_video_worker = Parsing_video(video_path, frames_dir, self.image_paths)
+                self.Parsing_video_worker.finished.connect(self.showImages)
+                self.Parsing_video_worker.start()
+        else:
+            QtWidgets.QMessageBox.warning(self, "警告", "正在解析视频")
 
     def addImageFolder(self):
         if not hasattr(self, 'add_images_worker') or not self.add_images_worker.isRunning():
@@ -626,6 +639,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.tabWidget.setCurrentIndex(0)  # 跳转到 缩略图标签页
         # 清空缩略图和图像标签页中所有内容
         self.clearLayout(self.gridLayoutThumbnails)
+        self.clearLayout(self.horizontalLayoutImages)
         """同时更新 缩略图标签页、图像标签页"""
         for idx, file_path in enumerate(file_paths):
             label = QtWidgets.QLabel()  # 每个缩略图是一个QLabel
@@ -642,7 +656,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 每加载 10~20 张图片，就让 UI 刷新一次，避免界面假死
             if (idx + 1) % 20 == 0:
                 QtCore.QCoreApplication.processEvents()
+
+            # 图像标签页
+            label_images = QtWidgets.QLabel()
+            scaled_pixmap_large = pixmap.scaledToHeight(450, QtCore.Qt.SmoothTransformation)  # 将高度固定为450像素
+            label_images.setPixmap(scaled_pixmap_large)
+            self.horizontalLayoutImages.addWidget(label_images)
         self.updateGridLayout()
+        width = sum([self.horizontalLayoutImages.itemAt(i).widget().width() for i in
+                     range(self.horizontalLayoutImages.count())])
+        self.scrollAreaContentImages.setMinimumWidth(width)
+        self.scrollAreaContentImages.adjustSize()
 
     def updateGridLayout(self):
         """重新计算并设置每行的缩略图数量，确保缩略图的布局始终适应当前窗口大小"""
@@ -669,6 +693,44 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
+
+    def startColmap(self):
+        # 检查目录中是否有jpg图像文件
+        image_dir = os.path.join(self.WORK_DIR, "input")
+        jpg_files = [f for f in os.listdir(image_dir) if f.lower().endswith('.jpg')]
+        if not jpg_files:
+            QtWidgets.QMessageBox.warning(self, "警告", "需要导入数据")
+            return  # 如果没有jpg文件，直接返回，不执行线程
+
+        if self.ColmapThread is None or not self.ColmapThread.isRunning():  # 进行检查和必要时重新创建。这确保了无论之前的线程是否已经完成，都可以安全地启动新的线程
+            self.textEditConsole.clear()  # 清空 textEditConsole
+            self.ColmapThread = ColmapWorker(self.WORK_DIR)  # 创建一个新的线程实例
+            self.ColmapThread.finished.connect(self.on_finished)  # 重建完成发出完成信号，然后展示结果
+            self.ColmapThread.log_message.connect(self.textEditConsole.append)
+            self.ColmapThread.start()
+            self.tabWidget.setCurrentIndex(2)  # 跳转到标签页3
+        else:
+            QtWidgets.QMessageBox.warning(self, "警告", "正在构建，请稍后")
+
+    def on_finished(self, filepath):
+        self.openPointCloud(filepath)  # 打开构建完成的点云文件
+        # 开始校准
+        if not hasattr(self,
+                       'Align_according_to_LicensePlate_Worker') or not self.Align_according_to_LicensePlate_Worker.isRunning():
+            self.Align_according_to_LicensePlate_Worker = Align_according_to_LicensePlate_Worker(self.image_paths,
+                                                                                                 self.WORK_DIR)
+            self.Align_according_to_LicensePlate_Worker.finished.connect(self.calculating_the_scale)
+            self.Align_according_to_LicensePlate_Worker.start()
+        else:
+            QtWidgets.QMessageBox.warning(self, "警告", "正在解析视频")
+
+    def calculating_the_scale(self, real_distances):
+        """计算比例"""
+        if not real_distances:
+            QtWidgets.QMessageBox.warning(self, "警告", "没有检测到车牌，请检查图像数据")
+            return
+        self.Unit_distance_length = np.float64(self.LicensePlate) / np.float64(real_distances)  # X （米/每单位）
+        print(f"根据车牌算出单位距离长度为{ self.Unit_distance_length:.8f} 米/单位")
 
     # 在窗口大小发生变化时被触发
     def resizeEvent(self, event):

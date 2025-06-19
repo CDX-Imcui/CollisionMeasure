@@ -1,0 +1,5 @@
+python test.py --imgs ADE_val_00001519.jpg --gpu 0 --cfg config/ade20k-resnet50dilated-ppm_deepsup.yaml
+python test.py --imgs image_004.jpg --gpu 0 --cfg config/ade20k-resnet50dilated-ppm_deepsup.yaml
+
+$env:PYTORCH_CUDA_ALLOC_CONF="max_split_size_mb:64"
+python test.py --imgs car_images --gpu 0 --cfg config/ade20k-resnet50dilated-ppm_deepsup.yaml
