@@ -2,14 +2,12 @@ import os
 import shutil
 import time
 
-import cv2
 import numpy as np
-from PIL import Image
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import QtCore
 import cv2
 import hyperlpr3 as lpr3
 
-from CDX.colmap_pipeline import Colmap
+from colmap_pipeline import Colmap
 from from_matrix import DepthBackProjector
 from SemanticSegmentation import SemanticSegmentation
 
@@ -50,9 +48,9 @@ class AddImagesWorker(QtCore.QThread):
         self.WORK_DIR = WORK_DIR
 
     def run(self):
-        self.finished.emit(self.images)  # 先不着急搬，先显示出来 间隙去搬
+        self.finished.emit(self.images)  # 先显示出来
         for file_path in self.images:  # 复制选择的每个图像文件到工作目录
-            shutil.copy(file_path, self.WORK_DIR)
+            shutil.copy(file_path, os.path.join(self.WORK_DIR, "input"))
 
 
 class Parsing_video(QtCore.QThread):
@@ -106,7 +104,6 @@ class Parsing_video(QtCore.QThread):
 
 class ColmapWorker(QtCore.QThread):
     finished = QtCore.pyqtSignal(str)
-    # error = QtCore.pyqtSignal(str)  # 错误信号
     log_message = QtCore.pyqtSignal(str)  # 进度消息信号
 
     def __init__(self, source_path, colmap_cmd="colmap", use_gpu=1):
@@ -131,6 +128,7 @@ class ColmapWorker(QtCore.QThread):
             self.log_message.emit('patch match stereo')  # 发送进度信息
             print('patch match stereo')
             self.Colmap.dense_stereo()
+
             self.log_message.emit('stereo fusion')  # 发送进度信息
             print('stereo fusion')
             self.Colmap.stereo_fusion()
@@ -222,48 +220,58 @@ class SemanticSegmentation_Worker(QtCore.QThread):
             projector = DepthBackProjector(self.WORK_DIR)
             best_image_id = None
             best_image_name = None
+            best_image_path = None
             best_points = None
             min_error = float('inf')  # 初始化为最大值
 
             # 遍历image
             paths_to_remove = []
             for image_path in self.image_paths:
+                print("开始遍历图像:", image_path)
                 result = catcher(cv2.imread(image_path))  # [['闽D2ER09', 0.99985033, 0, [479, 396, 578, 430]]]
                 if not result or result[0][1] < 0.5:
                     continue
                 box = result[0][3]
                 points = self.get_long_edge_points(box)
+                print("points", points)
 
                 if projector.load_data(os.path.basename(image_path)) is False:  # 图像数据不在images_bin
+                    print("projector.load_data(os.path.basename(image_path)) is False")
                     paths_to_remove.append(image_path)  # 记录需要删除的路径
                     continue
-                result = projector.compute_distance(points[0], points[1])  # 计算车牌两个点之间的距离
-
+                print("projector.load_data(os.path.basename(image_path)) is True")
+                distance, error = projector.compute_distance(points[0], points[1])  # 计算车牌两个点之间的距离
+                print("distance", distance, "   error", error)
+                # if result < min_error:
+                #     min_error = result
                 # 检查返回值类型，处理计算失败的情况
-                if isinstance(result, int) and result == -1:
+                if distance == -1 and error == -1:
                     continue
-                distance, error = result  # 如果计算成功，解包返回的距离和误差
 
                 if error < min_error:
                     min_error = error
                     real_distances = distance
                     best_image_name = os.path.basename(image_path)  # 'image_00059.jpg'
+                    best_image_path = image_path  # 完整路径
                     best_image_id = best_image_name.split('_')[1].split('.')[0]  # '004'
                     best_points = points  # 记录最佳车牌点对 [(x1, y1), (x1, y2)]
                     print(f"更新最小误差: {min_error}, 对应距离: {real_distances}, 图像: {best_image_name}")
             # 循环结束后，一次性删除所有无效路径
+            print("循环结束后，一次性删除所有无效路径")
             for path in paths_to_remove:
                 if path in self.image_paths:
                     self.image_paths.remove(path)
 
             ####################################
-            segmentation = SemanticSegmentation(self.image_paths)
+            segmentation = SemanticSegmentation(best_image_path)
             images = segmentation.run()
-            image = images[best_image_id]  # 获取最优图像
+            # image = images[best_image_id]  # 获取最优图像
+            image = images[0]  # 获取最优图像
             FLOOR_COLOR = [140, 140, 140]  # 注意顺序是 RGB
             ground_pixels = []
 
             # 根据分割图像，20个像素为步长遍历获取地面的特征点集合
+            print("# 根据分割图像，20个像素为步长遍历获取地面的特征点集合")
             for y in range(0, image.shape[0], 20):
                 for x in range(0, image.shape[1], 20):
                     pixel = image[y, x, :]  # 获取该点 RGB
@@ -272,6 +280,7 @@ class SemanticSegmentation_Worker(QtCore.QThread):
 
             projector.load_data(best_image_name)
             # 遍历ground_pixels，得到三维坐标列表
+            print("# 遍历ground_pixels，得到三维坐标列表")
             _3Dcoordinates = []
             for pixel in ground_pixels:
                 l, r = projector.pixel_to_world(pixel[0], pixel[1])
@@ -283,6 +292,7 @@ class SemanticSegmentation_Worker(QtCore.QThread):
                 _3Dcoordinates.append([x, y, z])  # 计算每个点的三维坐标
 
             # 根据_3Dcoordinates地面特定点拟合地面方程
+            print("# 根据_3Dcoordinates地面特定点拟合地面方程")
             cleaned_points = self.remove_outliers_statistical(_3Dcoordinates, k=10, std_ratio=2.0)
             normal, d, inliers = self.fit_plane_ransac(cleaned_points)
             a, b, c = normal

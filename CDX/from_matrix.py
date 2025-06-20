@@ -18,6 +18,7 @@ class DepthBackProjector:
         self.plane = None
         if plane is not None:
             self.plane = plane
+        self.image_file = None
 
     def load_data(self, image_name, workspace=None):
         if workspace is not None:
@@ -30,7 +31,9 @@ class DepthBackProjector:
         self.image_name = image_name
         self.image_file = os.path.join(self.workspace, "input", image_name)
         self.depth_file = os.path.join(self.workspace, "stereo", "depth_maps", image_name + ".geometric.bin")
-
+        if not os.path.exists(self.depth_file):
+            print(f"深度文件 {self.depth_file} 不存在")
+            return False
         self.img_data = next((img for img in self.images.values() if img.name.endswith(self.image_name)), None)
         if self.img_data is None:
             print(f"{self.image_name} 不在 {self.images_bin}")
@@ -39,13 +42,15 @@ class DepthBackProjector:
         self.cam = self.cameras[self.img_data.camera_id]
         self.fx, self.fy, self.cx, self.cy = self.cam.params[:4]
         self.depth = read_array(self.depth_file)
-        if self.depth.ndim == 2:
-            return False
-        # assert self.depth.ndim == 2, "深度图维度错误"
+        # if self.depth.ndim != 2:
+        #     print("self.depth.ndim == 2")
+        #     return False
+        assert self.depth.ndim == 2, "深度图维度错误"
         self.img = cv2.imread(self.image_file)
-        if self.img is None:
-            return False
-        # assert self.img is not None, f"无法读取 {self.image_file}"
+        # if self.img is None:
+        #     return False
+        assert self.img is not None, f"无法读取 {self.image_file}"
+        print(f"{self.image_name} load_data完成")
         return True
 
     def test_image_existOrNot(self):
@@ -89,22 +94,28 @@ class DepthBackProjector:
         t = np.array(self.img_data.tvec)
         R_mat = R.from_quat([q[1], q[2], q[3], q[0]]).as_matrix()
         X_world = R_mat.T @ (X_cam - t)
-        return X_world, error  # 返回三维坐标[x, y, z]和方差
+        return X_world, error  # 返回三维坐标[x, y, z]和方差 （X_world 不是 list，而是一维NumPy数组）
 
-    def compute_distance(self, pt1, pt2):
+    def compute_distance(self, pt1, pt2):  #输入二维点
         try:
             p1, error1 = self.pixel_to_world(*pt1)
             p2, error2 = self.pixel_to_world(*pt2)
+            # 检查点是否有效
+            if isinstance(p1, int) or isinstance(p2, int):
+                return -1, -1  # 无效点
             if self.plane is not None:
                 p1 = self.Projection(p1)
                 p2 = self.Projection(p2)
             return np.linalg.norm(p1 - p2), np.sqrt(error1 ** 2 + error2 ** 2)  # 返回距离和误差
         except ValueError as e:
             print(str(e))
-            return -1  # 返回-1表示计算失败
+            return -1, -1  # 返回-1表示计算失败
 
     def Projection(self, point):
         """将点投影到平面上"""
+        # 检查点是否有效（不是 -1）
+        if isinstance(point, int):
+            return -1
         a, b, c, d = self.plane
         # 平面方程: ax + by + cz + d = 0
         x, y, z = point

@@ -603,7 +603,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     saved_count += 1
                 frame_count += 1
             video_capture.release()
-            print(f"从视频中提取了 {len(images)} 帧")
             self.showImages(images)
 
     def addImageFolder(self):

@@ -2,12 +2,16 @@ import os
 import logging
 import shutil
 import subprocess
+import sys
 
 
 class Colmap:
     def __init__(self, source_path, colmap_cmd="colmap", use_gpu=1):
         self.source = source_path
-        self.colmap = colmap_cmd
+        # self.colmap = colmap_cmd
+        # colmap_exe = os.path.join(os.path.dirname(__file__), "colmap-x64-windows-cuda", "bin", "colmap.exe")
+        colmap_exe = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "colmap-x64-windows-cuda", "bin", "colmap.exe")
+        self.colmap = colmap_exe
         self.gpu = use_gpu
         # Paths
         self.image_dir = os.path.join(self.source, "input")
