@@ -85,9 +85,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.SplatThread = None
         self.image_paths = []
         self.LicensePlate = 0.44  # 米 （）
-        self.Unit_distance_length = None  # （）
+        self.max_size = 1280
+        self.now_size = None
 
-        # 初始化时设置临时工作目录
+        self.Unit_distance_length = None  # （）
+        self.best_image_id = None  # int （）
+        self.best_image_name = None  # 'image_00059.jpg'（）
+        self.best_points = None
+        self.have_plane = False
+        self.plane = None
+        self._3Dcoordinates = []
+
+        # 初始化时设置临时工作目录MyApplication_console
         # output = os.path.join(os.getcwd(), 'output')
         # os.makedirs(os.path.join(os.getcwd(), 'output'))
         self.WORK_DIR = os.path.join(os.getcwd(), 'WORK_DIR')
@@ -99,13 +108,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         cleardir_ine(os.path.join(self.WORK_DIR, "sparse"))
         cleardir_ine(os.path.join(self.WORK_DIR, "stereo"))
         cleardir_ine(os.path.join(self.WORK_DIR, "save_images"))
-
-        self.best_image_id = None  # int （）
-        self.best_image_name = None  # 'image_00059.jpg'（）
-        self.best_points = None
-        self.have_plane = False
-        self.plane = None
-        self._3Dcoordinates = []
 
         self.thumbnail_width = 200  # 设置缩略图宽度
         # self.sidebar_visible = False  # 初始化侧边栏可见状态
@@ -739,11 +741,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             video_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '选择视频', '',
                                                                   '视频文件 (*.mp4)')
             if video_path:
-                self.Parsing_video_worker = Parsing_video(video_path, self.WORK_DIR, self.image_paths, 1280)  # 1920 是上限
+                self.Parsing_video_worker = Parsing_video(video_path, self.WORK_DIR, self.image_paths,
+                                                          self.max_size)  # 分辨率上限
                 self.Parsing_video_worker.finished.connect(self.showImages)
+                self.Parsing_video_worker.now_sizeSignal.connect(self.setNowSize)
                 self.Parsing_video_worker.start()
         else:
             QtWidgets.QMessageBox.warning(self, "警告", "正在解析视频")
+
+    def setNowSize(self,now_size):
+        self.now_size = now_size
 
     def addImageFolder(self):
         if not hasattr(self, 'add_images_worker') or not self.add_images_worker.isRunning():
@@ -960,7 +967,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             QtWidgets.QMessageBox.warning(self, "警告", "正在构建，请稍后")
 
-    def setPlane(self, have_plane, plane, best_image_id, best_image_name, best_points,_3Dcoordinates):
+    def setPlane(self, have_plane, plane, best_image_id, best_image_name, best_points, _3Dcoordinates):
         """设置平面参数"""
         if isinstance(plane, list) and len(plane) == 4 and have_plane is True:
             self.have_plane = have_plane
@@ -976,10 +983,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def onColmap_finished(self, filepath):
         self.openPointCloud(filepath)  # 打开构建完成的点云文件
         # 得到平面参数
-        # self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(os.path.join(self.WORK_DIR, 'input'),
-        #                                                                self.WORK_DIR, self.best_image_id,
-        #                                                                self.best_image_name)
-        self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(self.image_paths, self.WORK_DIR)
+        self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(self.image_paths, self.WORK_DIR,self.now_size)
         self.SemanticSegmentation_Worker.finished.connect(self.setPlane)
         self.SemanticSegmentation_Worker.updateView.connect(self.showImages)
         self.SemanticSegmentation_Worker.start()

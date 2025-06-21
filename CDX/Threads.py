@@ -53,6 +53,7 @@ class AddImagesWorker(QtCore.QThread):
 
 class Parsing_video(QtCore.QThread):
     finished = QtCore.pyqtSignal(list)
+    now_sizeSignal = QtCore.pyqtSignal(int)
 
     def __init__(self, video_path, WORK_DIR, image_paths, max_size=1920):
         super(Parsing_video, self).__init__()
@@ -83,6 +84,7 @@ class Parsing_video(QtCore.QThread):
         step = max(total_frames // 100, 1)  # 计算帧间隔
         frame_count = 0
         saved_count = 0
+        now_size = None
 
         while True:
             success, frame = video_capture.read()
@@ -93,12 +95,16 @@ class Parsing_video(QtCore.QThread):
             if frame_count % step == 0:
                 frame_path = os.path.join(self.frames_dir, f"image_{saved_count:05d}.jpg")
                 frame = self.resize_keep_aspect_ratio(frame, max_size=self.max_size)  # 调整图像大小
+                now_size = max(frame.shape[0], frame.shape[1])  # 获取当前帧的最大尺寸
                 cv2.imwrite(frame_path, frame)
                 self.image_paths.append(frame_path)
                 saved_count += 1
         video_capture.release()
+        if now_size > self.max_size:
+            now_size = self.max_size
         print(f"从视频中提取了 {len(self.image_paths)} 帧")
         self.finished.emit(self.image_paths)
+        self.now_sizeSignal.emit(now_size)
 
 
 class ColmapWorker(QtCore.QThread):
@@ -150,10 +156,11 @@ class SemanticSegmentation_Worker(QtCore.QThread):
     log_message = QtCore.pyqtSignal(str)
     updateView = QtCore.pyqtSignal(list)
 
-    def __init__(self, image_paths, WORK_DIR):
+    def __init__(self, image_paths, WORK_DIR,now_size):
         super(SemanticSegmentation_Worker, self).__init__()
         self.image_paths = image_paths
         self.WORK_DIR = WORK_DIR
+        self.now_size = now_size
 
     def remove_outliers_statistical(self, point_array, k=10, std_ratio=2.0):
         """
@@ -275,7 +282,7 @@ class SemanticSegmentation_Worker(QtCore.QThread):
                 for x in range(0, image.shape[1], 20):
                     pixel = image[y, x, :]  # 获取该点 RGB
                     if np.array_equal(pixel, FLOOR_COLOR):
-                        ground_pixels.append((x, y))  # 记录图像坐标
+                        ground_pixels.append((int(round(x * (self.now_size / 640))), int(round(y * (self.now_size / 640)))))  # 记录图像坐标
 
             projector.load_data(best_image_name)
             # 遍历ground_pixels，得到三维坐标列表
