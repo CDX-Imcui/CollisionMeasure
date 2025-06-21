@@ -40,7 +40,6 @@ from SemanticSegmentation import SemanticSegmentation
 
 
 class AddImagesWorker(QtCore.QThread):
-    finished = QtCore.pyqtSignal(list)  # 完成后传递图像文件路径列表
 
     def __init__(self, images, WORK_DIR):
         super(AddImagesWorker, self).__init__()
@@ -48,7 +47,6 @@ class AddImagesWorker(QtCore.QThread):
         self.WORK_DIR = WORK_DIR
 
     def run(self):
-        self.finished.emit(self.images)  # 先显示出来
         for file_path in self.images:  # 复制选择的每个图像文件到工作目录
             shutil.copy(file_path, os.path.join(self.WORK_DIR, "input"))
 
@@ -56,15 +54,16 @@ class AddImagesWorker(QtCore.QThread):
 class Parsing_video(QtCore.QThread):
     finished = QtCore.pyqtSignal(list)
 
-    def __init__(self, video_path, WORK_DIR, image_paths):
+    def __init__(self, video_path, WORK_DIR, image_paths, max_size=1920):
         super(Parsing_video, self).__init__()
         self.video_path = video_path
         self.WORK_DIR = WORK_DIR
         self.frames_dir = os.path.join(WORK_DIR, "input")
         os.makedirs(self.frames_dir, exist_ok=True)
         self.image_paths = image_paths
+        self.max_size = max_size
 
-    def resize_keep_aspect_ratio(self, img, max_size=1280):
+    def resize_keep_aspect_ratio(self, img, max_size=1920):
         """调整图像大小，保持横纵比，最长边不超过max_size"""
         height, width = img.shape[0], img.shape[1]
         # 如果图像已经小于等于最大尺寸，则不需要调整
@@ -93,7 +92,7 @@ class Parsing_video(QtCore.QThread):
             # 每隔几帧保存一次(可以根据需要调整间隔)
             if frame_count % step == 0:
                 frame_path = os.path.join(self.frames_dir, f"image_{saved_count:05d}.jpg")
-                frame = self.resize_keep_aspect_ratio(frame, max_size=1280)  # 调整图像大小
+                frame = self.resize_keep_aspect_ratio(frame, max_size=self.max_size)  # 调整图像大小
                 cv2.imwrite(frame_path, frame)
                 self.image_paths.append(frame_path)
                 saved_count += 1
@@ -106,9 +105,9 @@ class ColmapWorker(QtCore.QThread):
     finished = QtCore.pyqtSignal(str)
     log_message = QtCore.pyqtSignal(str)  # 进度消息信号
 
-    def __init__(self, source_path, colmap_cmd="colmap", use_gpu=1):
+    def __init__(self, source_path):
         super(ColmapWorker, self).__init__()
-        self.Colmap = Colmap(source_path, colmap_cmd, use_gpu)
+        self.Colmap = Colmap(source_path)
 
     def run(self):
         try:
@@ -147,7 +146,7 @@ from sklearn.linear_model import RANSACRegressor
 
 
 class SemanticSegmentation_Worker(QtCore.QThread):
-    finished = QtCore.pyqtSignal(bool, list, int, str, list)  # 成功与否，平面方程系数
+    finished = QtCore.pyqtSignal(bool, list, int, str, list, list)  # 成功与否，平面方程系数
     log_message = QtCore.pyqtSignal(str)
     updateView = QtCore.pyqtSignal(list)
 
@@ -300,8 +299,10 @@ class SemanticSegmentation_Worker(QtCore.QThread):
             print(
                 f"内点数量: {np.sum(inliers)}, 平均拟合误差: {np.mean(np.abs(cleaned_points[inliers] @ normal + d)):.4f}")
 
-            self.finished.emit(True, [a, b, c, d], int(best_image_id), best_image_name, best_points)
+            self.finished.emit(True, [a, b, c, d], int(best_image_id), best_image_name, best_points, _3Dcoordinates)
             self.updateView.emit(self.image_paths)  # 更新视图
+            for i in _3Dcoordinates:
+                print(i, " - ")
         except Exception as e:
             self.log_message.emit(str(e))
             # self.finished.emit(False, [0, 0, 0, 0], -1, "",[])  # 如果发生错误，返回一个无效的平面方程系数
@@ -323,16 +324,15 @@ class Align_according_to_LicensePlate_Worker(QtCore.QThread):
         real_distances, error = projector.compute_distance(self.best_points[0], self.best_points[1])  # 计算车牌两个点之间的距离
         self.finished.emit(real_distances)
 
-
-class Choose_Point_Worker(QtCore.QThread):
-    finished = QtCore.pyqtSignal(list)
-
-    def __init__(self, images, WORK_DIR):
-        super(Choose_Point_Worker, self).__init__()
-        self.images = images
-        self.WORK_DIR = WORK_DIR
-
-    def run(self):
-        self.finished.emit(self.images)
-        for file_path in self.images:
-            shutil.copy(file_path, self.WORK_DIR)
+# class Choose_Point_Worker(QtCore.QThread):
+#     finished = QtCore.pyqtSignal(list)
+#
+#     def __init__(self, images, WORK_DIR):
+#         super(Choose_Point_Worker, self).__init__()
+#         self.images = images
+#         self.WORK_DIR = WORK_DIR
+#
+#     def run(self):
+#         self.finished.emit(self.images)
+#         for file_path in self.images:
+#             shutil.copy(file_path, self.WORK_DIR)

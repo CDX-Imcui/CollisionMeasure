@@ -6,13 +6,15 @@ import sys
 
 
 class Colmap:
-    def __init__(self, source_path, colmap_cmd="colmap", use_gpu=1):
+    def __init__(self, source_path, colmap_cmd=None):
         self.source = source_path
-        # self.colmap = colmap_cmd
-        # colmap_exe = os.path.join(os.path.dirname(__file__), "colmap-x64-windows-cuda", "bin", "colmap.exe")
-        colmap_exe = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "colmap-x64-windows-cuda", "bin", "colmap.exe")
-        self.colmap = colmap_exe
-        self.gpu = use_gpu
+        if colmap_cmd is None:
+            self.colmap = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "colmap-x64-windows-cuda", "bin",
+                                       "colmap.exe")
+        else:
+            self.colmap="colmap"
+            # self.colmap = colmap_cmd
+        self.gpu = 1
         # Paths
         self.image_dir = os.path.join(self.source, "input")
         self.database = os.path.join(self.source, "distorted/database.db")
@@ -109,6 +111,7 @@ class Colmap:
             self.dense_stereo()
             self.stereo_fusion()
             logging.info("COLMAP reconstruction completed successfully.")
+            print("COLMAP reconstruction completed successfully.")
         except Exception as e:
             logging.error(f"Reconstruction pipeline failed: {e}")
             raise

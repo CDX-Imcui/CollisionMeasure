@@ -32,24 +32,25 @@ class DepthBackProjector:
         self.image_file = os.path.join(self.workspace, "input", image_name)
         self.depth_file = os.path.join(self.workspace, "stereo", "depth_maps", image_name + ".geometric.bin")
         if not os.path.exists(self.depth_file):
-            print(f"深度文件 {self.depth_file} 不存在")
+            print(f"深度文件 {self.depth_file} 不存在,跳过加载")
             return False
         self.img_data = next((img for img in self.images.values() if img.name.endswith(self.image_name)), None)
         if self.img_data is None:
-            print(f"{self.image_name} 不在 {self.images_bin}")
+            print(f"{self.image_name} 不在 {self.images_bin},跳过加载")
             return False  # 图像数据未找到
         # assert self.img_data is not None, f"{self.image_name} 不在 {self.images_bin}"
         self.cam = self.cameras[self.img_data.camera_id]
         self.fx, self.fy, self.cx, self.cy = self.cam.params[:4]
         self.depth = read_array(self.depth_file)
-        # if self.depth.ndim != 2:
-        #     print("self.depth.ndim == 2")
-        #     return False
-        assert self.depth.ndim == 2, "深度图维度错误"
+        if self.depth.ndim != 2:
+            print("深度图维度错误,跳过加载")
+            return False
+        # assert self.depth.ndim == 2, "深度图维度错误"
         self.img = cv2.imread(self.image_file)
-        # if self.img is None:
-        #     return False
-        assert self.img is not None, f"无法读取 {self.image_file}"
+        if self.img is None:
+            print(f"无法读取 {self.image_file},跳过加载")
+            return False
+        # assert self.img is not None, f"无法读取 {self.image_file}"
         print(f"{self.image_name} load_data完成")
         return True
 

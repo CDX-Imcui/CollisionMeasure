@@ -27,8 +27,9 @@
     <property name="title">
      <string>文件</string>
     </property>
-    <addaction name="actionOpenPointCloud"/>
-    <addaction name="actionRecentFiles"/>
+    <addaction name="actionOpenProgram"/>
+    <addaction name="actionSaveProgram"/>
+    <addaction name="actionRecentProgram"/>
     <addaction name="actionExit"/>
    </widget>
    <widget class="QMenu" name="menu_2">
@@ -42,14 +43,14 @@
    <addaction name="menu_2"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionOpenPointCloud">
+  <action name="actionOpenProgram">
    <property name="text">
-    <string>打开点云</string>
+    <string>打开</string>
    </property>
   </action>
-  <action name="actionRecentFiles">
+  <action name="actionRecentProgram">
    <property name="text">
-    <string>最近文件</string>
+    <string>最近使用过的项目</string>
    </property>
   </action>
   <action name="actionExit">
@@ -68,6 +69,14 @@
   <action name="import_images">
    <property name="text">
     <string>导入图像文件夹</string>
+   </property>
+  </action>
+  <action name="actionSaveProgram">
+   <property name="text">
+    <string>保存项目</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+S</string>
    </property>
   </action>
  </widget>
