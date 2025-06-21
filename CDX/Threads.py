@@ -310,6 +310,9 @@ class SemanticSegmentation_Worker(QtCore.QThread):
             self.updateView.emit(self.image_paths)  # 更新视图
             for i in _3Dcoordinates:
                 print(i, " - ")
+            print("ground_pixels 地面特征点数量:", len(ground_pixels))
+            for i in ground_pixels:
+                print(i, " - ")
         except Exception as e:
             self.log_message.emit(str(e))
             # self.finished.emit(False, [0, 0, 0, 0], -1, "",[])  # 如果发生错误，返回一个无效的平面方程系数

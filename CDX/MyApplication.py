@@ -96,19 +96,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.plane = None
         self._3Dcoordinates = []
 
-        # 初始化时设置临时工作目录MyApplication_console
-        # output = os.path.join(os.getcwd(), 'output')
-        # os.makedirs(os.path.join(os.getcwd(), 'output'))
-        self.WORK_DIR = os.path.join(os.getcwd(), 'WORK_DIR')
-        self.save_path = os.path.join(self.WORK_DIR, "save_images")
-        cleardir_ine(self.WORK_DIR)
-        cleardir_ine(os.path.join(self.WORK_DIR, "distorted"))
-        cleardir_ine(os.path.join(self.WORK_DIR, "images"))
-        cleardir_ine(os.path.join(self.WORK_DIR, "input"))
-        cleardir_ine(os.path.join(self.WORK_DIR, "sparse"))
-        cleardir_ine(os.path.join(self.WORK_DIR, "stereo"))
-        cleardir_ine(os.path.join(self.WORK_DIR, "save_images"))
-
         self.thumbnail_width = 200  # 设置缩略图宽度
         # self.sidebar_visible = False  # 初始化侧边栏可见状态
         self.settings = QSettings('CUIDONGXU', 'point_cloud_splat')  # 指定组织名和应用名时，自动确定数据的存储位置和格式
@@ -143,9 +130,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.import_video.triggered.connect(self.addVideo)
         self.import_images.triggered.connect(self.addImageFolder)
 
-    def init_dir(self, target_dir=None):
+    def init_dir(self, target_name=None):
         # 初始化时设置临时工作目录
-        self.WORK_DIR = os.path.join(os.getcwd(), 'output', target_dir)
+        self.WORK_DIR = os.path.join(os.getcwd(), 'output', target_name)
         self.save_path = os.path.join(self.WORK_DIR, "save_images")
         cleardir_ine(self.WORK_DIR)
         cleardir_ine(os.path.join(self.WORK_DIR, "distorted"))
@@ -281,6 +268,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             if os.path.exists(save_dir):
                 shutil.rmtree(save_dir)  # 如果已有同名文件夹，可选择覆盖
+            if self.WORK_DIR is None:
+                return
             shutil.copytree(self.WORK_DIR, save_dir)  # 递归复制子文件夹
             # shutil.copytree(self.WORK_DIR, save_dir, dirs_exist_ok=True)  # 递归复制子文件夹，Python 3.8+
             data = {
@@ -323,6 +312,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.recent_files_list.remove(open_dir)
                 self.updateRecentFilesMenu()
             return
+        self.init_dir(target_name=os.path.basename(open_dir))  # 初始化工作目录
 
         # 清空当前 WORK_DIR，并复制新的项目内容
         if os.path.exists(self.WORK_DIR):
@@ -737,9 +727,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def addVideo(self):
         if not hasattr(self, 'Parsing_video_worker') or not self.Parsing_video_worker.isRunning():
-            cleardir_ine(self.WORK_DIR)
+
             video_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '选择视频', '',
                                                                   '视频文件 (*.mp4)')
+            self.init_dir(target_name=os.path.basename(video_path))  # 初始化工作目录
             if video_path:
                 self.Parsing_video_worker = Parsing_video(video_path, self.WORK_DIR, self.image_paths,
                                                           self.max_size)  # 分辨率上限
@@ -754,10 +745,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
     def addImageFolder(self):
         if not hasattr(self, 'add_images_worker') or not self.add_images_worker.isRunning():
-            cleardir_ine(self.WORK_DIR)
             folder = QtWidgets.QFileDialog.getExistingDirectory(self, '选择文件夹', '')
             if folder:
                 # 获取文件夹内所有图像文件
+                self.init_dir(target_name=os.path.basename(folder))  # 初始化工作目录
                 self.image_paths = [os.path.join(folder, f) for f in os.listdir(folder)
                                     if
                                     os.path.isfile(os.path.join(folder, f)) and f.lower().endswith(
