@@ -5,10 +5,11 @@ from matplotlib import pyplot as plt
 from scipy.spatial.transform import Rotation as R
 from read_write_dense import read_array
 from read_write_model import read_images_binary, read_cameras_binary
+import open3d as o3d
 
 
 class DepthBackProjector:
-    def __init__(self, workspace, plane=None):
+    def __init__(self, workspace, plane=None, to_Project=None):
         self.workspace = workspace
         self.images_bin = os.path.join(workspace, "sparse", "images.bin")
         self.cameras_bin = os.path.join(workspace, "sparse", "cameras.bin")
@@ -18,7 +19,12 @@ class DepthBackProjector:
         self.plane = None
         if plane is not None:
             self.plane = plane
+        self.to_Project = None
+        if to_Project is not None:
+            self.to_Project = to_Project
         self.image_file = None
+        self.image_file = None
+        self.point_cloud = os.path.join(self.workspace, 'point_cloud.ply')
 
     def load_data(self, image_name, workspace=None):
         if workspace is not None:
@@ -64,6 +70,62 @@ class DepthBackProjector:
             return False
         return True
 
+    def world_to_pixel(self, X_world):
+        if not isinstance(X_world, np.ndarray) or X_world.shape != (3,):
+            print("形状为 (3,) 的 np.ndarray")
+            return -1, -1,-1
+        q = self.img_data.qvec  # 四元数表示相机姿态
+        t = np.array(self.img_data.tvec)  # 相机平移向量
+
+        # 注意这里不是转置，是原始旋转矩阵（从世界到相机）
+        R_mat = R.from_quat([q[1], q[2], q[3], q[0]]).as_matrix()
+        X_cam = R_mat @ X_world + t  # 从世界坐标系转换到相机坐标系
+
+        # 投影到图像平面
+        x, y, z = X_cam
+        if z <= 0:
+            return -1, -1  ,-1# 点在相机背后或深度无效
+
+        u = x * self.fx / z + self.cx
+        v = y * self.fy / z + self.cy
+
+        return int(round(u)), int(round(v)), z
+
+    def build_pixel_to_point_map(self):
+        assert hasattr(self, 'point_cloud'), "请先指定 self.point_cloud 文件路径"
+        if not os.path.exists(self.point_cloud):
+            raise FileNotFoundError(f"{self.point_cloud} 不存在")
+
+        pcd = o3d.io.read_point_cloud(self.point_cloud)
+        points = np.asarray(pcd.points)
+
+        pixel_map = dict()  # 初始化：只保留每个像素最近的点
+
+        for point in points:
+            u, v, z = self.world_to_pixel(point)
+            if u < 0 or v < 0 or u >= self.depth.shape[1] or v >= self.depth.shape[0]:
+                continue
+            key = (u, v)
+            if key not in pixel_map or z < pixel_map[key]['depth']:
+                pixel_map[key] = {'point': point, 'depth': z}
+        return pixel_map  # dict[(u,v)] = {'point': [x,y,z], 'depth': z}
+
+    def find_nearest_valid_pixel(self, pix2point, x, y, max_search_radius=20):
+        min_dist = float('inf')
+        nearest_key = None
+        for (u, v) in pix2point:
+            dx = x - u
+            dy = y - v
+            dist = dx * dx + dy * dy  # 避免开根，提高效率
+            if dist < min_dist:
+                min_dist = dist
+                nearest_key = (u, v)
+
+        if nearest_key and np.sqrt(min_dist) <= max_search_radius:
+            return nearest_key, pix2point[nearest_key]
+        else:
+            return None, None
+
     def compute_patch_variance(self, u, v, win=1):
         """计算像素点邻域内深度方差"""
         h, w = self.depth.shape
@@ -97,14 +159,14 @@ class DepthBackProjector:
         X_world = R_mat.T @ (X_cam - t)
         return X_world, error  # 返回三维坐标[x, y, z]和方差 （X_world 不是 list，而是一维NumPy数组）
 
-    def compute_distance(self, pt1, pt2):  #输入二维点
+    def compute_distance(self, pt1, pt2):  # 输入二维点
         try:
             p1, error1 = self.pixel_to_world(*pt1)
             p2, error2 = self.pixel_to_world(*pt2)
             # 检查点是否有效
             if isinstance(p1, int) or isinstance(p2, int):
                 return -1, -1  # 无效点
-            if self.plane is not None:
+            if self.to_Project is True:
                 p1 = self.Projection(p1)
                 p2 = self.Projection(p2)
             return np.linalg.norm(p1 - p2), np.sqrt(error1 ** 2 + error2 ** 2)  # 返回距离和误差
@@ -112,7 +174,9 @@ class DepthBackProjector:
             print(str(e))
             return -1, -1  # 返回-1表示计算失败
 
-    def Projection(self, point):
+    def Projection(self, point):  # [x, y, z]
+        if self.to_Project is False:
+            return point
         """将点投影到平面上"""
         # 检查点是否有效（不是 -1）
         if isinstance(point, int):
@@ -171,23 +235,3 @@ class DepthBackProjector:
 
         plt.tight_layout()  # 设置紧凑布局以最大化图像显示区域
         plt.show(block=True)  # 确保阻塞式显示
-        # ####################
-        #
-        # def on_mouse(event, u, v, flags, param):
-        #     if event == cv2.EVENT_LBUTTONDOWN:
-        #         try:
-        #             X_world, error = self.pixel_to_world(u, v)
-        #             print(f"点击像素: ({u}, {v}), 深度方差 = {error:.4f}")
-        #             print("三维坐标 (world):", np.round(X_world, 4))
-        #             cv2.circle(self.img, (u, v), 5, (0, 0, 255), -1)
-        #         except ValueError as e:
-        #             print(str(e))
-        #
-        # cv2.namedWindow("Viewer", cv2.WINDOW_NORMAL)
-        # cv2.resizeWindow("Viewer", 1200, 800)
-        # cv2.setMouseCallback("Viewer", on_mouse)
-        # while True:
-        #     cv2.imshow("Viewer", self.img)
-        #     if cv2.waitKey(1) == 27:
-        #         break
-        # cv2.destroyAllWindows()

@@ -8,8 +8,8 @@ from read_write_model import read_images_binary, read_cameras_binary
 # --- 配置参数 ---
 # IMAGE_NAME = "image_005.jpg"
 # IMAGE_NAME = "image_025.jpg"
-IMAGE_NAME = "image_001.jpg"
-WORKSPACE = "car"  # 稠密重建设备根目录
+IMAGE_NAME = "image_00078.jpg"
+WORKSPACE = "car1"  # 稠密重建设备根目录
 DEPTH_FILE = os.path.join(WORKSPACE, "stereo", "depth_maps", IMAGE_NAME + ".geometric.bin")
 
 IMAGE_FILE = os.path.join(WORKSPACE,  "input", IMAGE_NAME)  # 与 COLMAP 深度对应图像路径

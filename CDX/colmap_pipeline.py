@@ -34,6 +34,7 @@ class Colmap:
         result = subprocess.call(cmd, shell=True)
         if result != 0:
             logging.error(error_msg)
+            print("异常退出",error_msg)
             raise RuntimeError(error_msg)
 
     def feature_extraction(self):
@@ -76,6 +77,7 @@ class Colmap:
             f"--output_type COLMAP"
         )
         self._run_cmd(cmd, "Image undistortion failed")
+        os.makedirs(self.source + "/sparse/0", exist_ok=True)
         # copy sparse files
         sparse_src = os.path.join(self.source, "sparse")
         for fname in os.listdir(sparse_src):

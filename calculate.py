@@ -19,8 +19,8 @@ def compute_distance(p1, p2):
 
 
 # 示例
-point1 = [-0.8765 , 0.3433 , 3.1975]
-point2 = [-0.8665 , 0.7551 , 1.0598]
+point1 = [2.10400313 ,0.54021593, 0.95023576]
+point2 = [-0.63171173 , 0.15827797 , 1.48994795]
 
 d = compute_distance(point1, point2)
 print(f"Distance: {d:.4f}")

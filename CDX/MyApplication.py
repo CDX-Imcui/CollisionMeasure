@@ -84,9 +84,12 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.ColmapThread = None
         self.SplatThread = None
         self.image_paths = []
-        self.LicensePlate = 0.44  # 米 （）
+        self.LicensePlate = 0.47  # 米 （）
         self.max_size = 1280
         self.now_size = None
+
+        # self.to_Project = True
+        self.to_Project = False
 
         self.Unit_distance_length = None  # （）
         self.best_image_id = None  # int （）
@@ -94,7 +97,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.best_points = None
         self.have_plane = False
         self.plane = None
-        self._3Dcoordinates = []
+        # self._3Dcoordinates = []
+        # self.point_mapping = {}
 
         self.thumbnail_width = 200  # 设置缩略图宽度
         # self.sidebar_visible = False  # 初始化侧边栏可见状态
@@ -123,7 +127,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.actionSaveProgram.triggered.connect(self.saveProgram)
         self.actionExit.triggered.connect(self.close)
         self.actionReconstruct.triggered.connect(self.startColmap)
-        # self.mesure_distance.triggered.connect(self.start_measure_distance) #暂时先不做
+        self.actionSemanticSegmentation.triggered.connect(self.SemanticSegmentation)
+        # self.mesure_distance.triggered.connect(self.start_measure_distance)  # 暂时先不做
         self.export_docx_Action.triggered.connect(self.export_docx)
         # 初始化最近文件菜单
         self.updateRecentFilesMenu()
@@ -146,6 +151,8 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.setWindowTitle("测距")
         self.actionReconstruct = QtWidgets.QAction("开始构建", self)
         self.menubar.addAction(self.actionReconstruct)
+        self.actionSemanticSegmentation = QtWidgets.QAction("开始校准", self)
+        self.menubar.addAction(self.actionSemanticSegmentation)
         self.mesure_distance = QtWidgets.QAction(" ", self)  # 开始测距
         self.menubar.addAction(self.mesure_distance)
         self.export_docx_Action = QtWidgets.QAction("生成报告", self)
@@ -281,7 +288,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 "best_image_name": self.best_image_name,
                 "best_points": self.best_points if isinstance(self.best_points, list) else self.best_points,  # 两个二维点
                 "image_paths": self.image_paths,
-                "_3Dcoordinates": self._3Dcoordinates,
+                "now_size": self.now_size,
+                # "_3Dcoordinates": self._3Dcoordinates,
+                # "point_mapping": self.point_mapping,
                 "cdx_test": "cdx_test"
             }
             import json
@@ -301,6 +310,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print("保存项目时出错：", e)
 
     def openProgram(self, open_dir=None):
+        # 忽略布尔值参数
+        if isinstance(open_dir, bool):
+            open_dir = None
         if open_dir is None:
             open_dir = QtWidgets.QFileDialog.getExistingDirectory(self, "打开项目文件夹", "")
             if not open_dir:
@@ -318,6 +330,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if os.path.exists(self.WORK_DIR):
             shutil.rmtree(self.WORK_DIR)
         shutil.copytree(open_dir, self.WORK_DIR)
+        self.openPointCloud(os.path.join(self.WORK_DIR, "point_cloud.ply"))
         json_path = os.path.join(self.WORK_DIR, "data.json")
         if os.path.exists(json_path):
             import json
@@ -329,7 +342,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.best_image_id = data.get("best_image_id")
             self.best_image_name = data.get("best_image_name")
             self.best_points = data.get("best_points")
-            self._3Dcoordinates = data.get("_3Dcoordinates")
+            self.now_size = data.get("now_size")
+            # self._3Dcoordinates = data.get("_3Dcoordinates")
+            # self.point_mapping = data.get("point_mapping")
             old_paths = data.get("image_paths")
             # 虽然图像是一致的，但是外界地址可能变更，需要把文件名前面的部分替换成 self.WORK_DIR
             self.image_paths = [os.path.join(self.WORK_DIR, "input", os.path.basename(p)) for p in old_paths]
@@ -339,6 +354,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print(f"找到 {len(self.image_paths)} 张有效图像")
             self.showImages(self.image_paths)
         else:
+            self.image_paths=glob(os.path.join(self.WORK_DIR, "input", "*.jpg"))
             print("没有找到有效图像，无法显示")
         # 更新最近打开列表（可选）
         if open_dir not in self.recent_files_list:
@@ -740,7 +756,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         else:
             QtWidgets.QMessageBox.warning(self, "警告", "正在解析视频")
 
-    def setNowSize(self,now_size):
+    def setNowSize(self, now_size):
         self.now_size = now_size
 
     def addImageFolder(self):
@@ -812,7 +828,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # 创建 Matplotlib 图形窗口，并设置响应更快的后端
         plt.switch_backend('Qt5Agg')  # 使用Qt5Agg图形后端
 
+        plt.close('all')  # 关闭所有之前打开的图形
         fig = plt.figure(figsize=(10, 8))
+        fig.canvas.manager.set_window_title(image_name)  # 设置窗口标题
         gs = fig.add_gridspec(2, 1, height_ratios=[9, 1])
         fig.subplots_adjust(top=0.85, bottom=0.05, left=0.05, right=0.95)  # 为顶部按钮预留空间
 
@@ -827,8 +845,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.Unit_distance_length is None:
             return
 
-        projector = DepthBackProjector(self.WORK_DIR, self.plane)
+        projector = DepthBackProjector(self.WORK_DIR, self.plane, to_Project=self.to_Project)
         projector.load_data(image_name)
+        ##########################
+        # pix2point = projector.build_pixel_to_point_map() #  dict[(u,v)] = {'point': [x,y,z], 'depth': z}
+        # print(f"总共投影得到 {len(pix2point)} 个像素点 - 最近点的映射")
+        # _img=cv2.imread(image_path)
+        # for (u, v),value in pix2point.items():
+        #     cv2.circle(_img, (u, v), 5, (0, 0, 255), -1)
+        # cv2.imwrite("aaa.jpg",_img)
+        ##########################
+            # print(f"像素 ({u}, {v}) ← 最近点 {np.round(value['point'], 3)}, 深度 {value['depth']:.2f}")
+        # for (u, v), info in list(pix2point.items())[:5]:
+        #     print(f"像素 ({u}, {v}) ← 最近点 {np.round(info['point'], 3)}, 深度 {info['depth']:.2f}")
 
         def onclick(event):
             if event.xdata is not None and event.ydata is not None:
@@ -842,32 +871,63 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                     # b, g, r = img[y, x]  # 获取该像素的颜色值
                     # print(f"点击坐标 (X={x}, Y={y}) 的像素颜色 (RGB): ({r}, {g}, {b})")
 
+                    # info = pix2point.get((x, y), None)  # 确保像素点存在
+                    # if info is None:
+                    #     # 寻找最近的有效二维点
+                    #     nearest_key, info = projector.find_nearest_valid_pixel(pix2point, x, y,100)
+                    #     if info is None:
+                    #         print(f"找不到 {x},{y} 附近有效像素")
+                    #         return
+                    #     else:
+                    #         print(f"找不到精确坐标，使用最近的像素: {nearest_key}")
+                    #         x, y = nearest_key
+                    # PointCoordinate.append(info['point'])
+                    # plt.draw()
+                    #################################
                     t, error = projector.pixel_to_world(x, y)  # t:x, y, z（未经投影的点）一维NumPy数组
                     if (isinstance(t, (int, float)) and t == -1) or (
                             isinstance(t, np.ndarray) and np.all(t == -1)) and error == -1:
                         self.textEditConsole.append(f"点 ({x}, {y}) 在深度图中未找到对应的三维坐标")
                         # QtWidgets.QMessageBox.information(self, "点击无效", f"点 ({x}, {y}) 无效")
                         return
+                    print("点击坐标 (X={}, Y={}) 的未经投影的点三维坐标: {}".format(x, y, t))
                     ax.plot(x, y, 'r+', markersize=10)  # 在图像上显示十字标记
                     plt.draw()  # 立即更新绘图
-                    ChaCoordinate.append([x, y])
 
+                    ChaCoordinate.append([x, y])
                     # PointCoordinate中每有两个点，就绘制一条线，并标上距离
+                    # if len(PointCoordinate) % 2 == 0:
+                    #     print("开始计算两点距离")
+                    #     p1 = PointCoordinate[-2]
+                    #     p2 = PointCoordinate[-1]
+                    #     p1 = self.Projection(p1)
+                    #     p2 = self.Projection(p2)
+                    #     line=np.linalg.norm(p1 - p2)
+                    #     print("两点距离:", line)
+                    #     real_distance = line * self.Unit_distance_length  # 恢复成现实单位
+                    #     print("现实单位",real_distance)
+                    #     ax.plot([ChaCoordinate[-2][0], ChaCoordinate[-1][0]],
+                    #             [ChaCoordinate[-2][1], ChaCoordinate[-1][1]], 'g-')
+                    #     # 计算线段中点位置用于放置距离标签
+                    #     mid_x = (ChaCoordinate[-2][0] + ChaCoordinate[-1][0]) / 2
+                    #     mid_y = (ChaCoordinate[-2][1] + ChaCoordinate[-1][1]) / 2
+                    #     # 在线段中点显示距离值
+                    #     ax.text(mid_x, mid_y, f"{real_distance:.2f}", color='red', fontsize=10,
+                    #             ha='center', va='center')
+
                     if len(ChaCoordinate) % 2 == 0:
                         # 绘制线段
                         p1 = ChaCoordinate[-2]
                         p2 = ChaCoordinate[-1]
-
                         line, error = projector.compute_distance(p1, p2)  # 计算距离
                         real_distance = line * self.Unit_distance_length  # 恢复成现实单位
-
                         ax.plot([ChaCoordinate[-2][0], ChaCoordinate[-1][0]],
                                 [ChaCoordinate[-2][1], ChaCoordinate[-1][1]], 'g-')
                         # 计算线段中点位置用于放置距离标签
                         mid_x = (ChaCoordinate[-2][0] + ChaCoordinate[-1][0]) / 2
                         mid_y = (ChaCoordinate[-2][1] + ChaCoordinate[-1][1]) / 2
                         # 在线段中点显示距离值
-                        ax.text(mid_x, mid_y, f"{real_distance:.2f}", color='red', fontsize=10,
+                        ax.text(mid_x, max(mid_y-10,0), f"{real_distance*100:.2f}", color='red', fontsize=10,
                                 ha='center', va='center')
 
         cid = fig.canvas.mpl_connect('button_press_event', onclick)
@@ -951,52 +1011,67 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if self.ColmapThread is None or not self.ColmapThread.isRunning():  # 进行检查和必要时重新创建。这确保了无论之前的线程是否已经完成，都可以安全地启动新的线程
             self.textEditConsole.clear()  # 清空 textEditConsole
             self.ColmapThread = ColmapWorker(self.WORK_DIR)  # 创建一个新的线程实例
-            self.ColmapThread.finished.connect(self.onColmap_finished)  # 重建完成发出完成信号，然后展示结果
             self.ColmapThread.log_message.connect(self.textEditConsole.append)
             self.ColmapThread.start()
             self.tabWidget.setCurrentIndex(2)  # 跳转到标签页3
         else:
             QtWidgets.QMessageBox.warning(self, "警告", "正在构建，请稍后")
 
-    def setPlane(self, have_plane, plane, best_image_id, best_image_name, best_points, _3Dcoordinates):
-        """设置平面参数"""
-        if isinstance(plane, list) and len(plane) == 4 and have_plane is True:
-            self.have_plane = have_plane
-            self.plane = np.array(plane, dtype=np.float64)
-            print(f"平面参数已设置为: {self.plane}")
-            self.best_image_id = best_image_id
-            self.best_image_name = best_image_name
-            self.best_points = best_points
-            self._3Dcoordinates = _3Dcoordinates
-        else:
-            raise ValueError("平面参数必须是一个包含4个元素的列表或数组")
-
-    def onColmap_finished(self, filepath):
+    def SemanticSegmentation(self):
+        filepath=os.path.join(self.WORK_DIR, 'point_cloud.ply')
+        for fname in os.listdir(self.WORK_DIR + "/sparse"):
+            if fname == '0':
+                continue
+            source_file = os.path.join(self.WORK_DIR, "sparse", fname)
+            destination_file = os.path.join(self.WORK_DIR, "sparse", "0", fname)
+            shutil.copy2(source_file, destination_file)
         self.openPointCloud(filepath)  # 打开构建完成的点云文件
         # 得到平面参数
-        self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(self.image_paths, self.WORK_DIR,self.now_size)
+        self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(self.image_paths, self.WORK_DIR, self.now_size,
+                                                                       self.to_Project)
         self.SemanticSegmentation_Worker.finished.connect(self.setPlane)
         self.SemanticSegmentation_Worker.updateView.connect(self.showImages)
         self.SemanticSegmentation_Worker.start()
-        # 设置计时器检查 have_plane 状态
-        self.wait_plane_timer = QtCore.QTimer(self)
-        self.wait_plane_timer.timeout.connect(self.check_plane_status)
-        self.wait_plane_timer.start(1000)  # 每1秒检查一次
-        self.textEditConsole.append("正在等待平面检测完成...")
+        # # 设置计时器检查 have_plane 状态
+        # self.wait_plane_timer = QtCore.QTimer(self)
+        # self.wait_plane_timer.timeout.connect(self.check_plane_status)
+        # self.wait_plane_timer.start(1000)  # 每1秒检查一次
+        # self.textEditConsole.append("正在等待平面检测完成...")
+
+    def setPlane(self, have_plane, plane, best_image_id, best_image_name, best_points,):
+        """设置平面参数"""
+        print("进入setPlane")
+        self.have_plane = have_plane
+        self.plane = np.array(plane, dtype=np.float64)
+        print(f"平面参数已设置为: {self.plane}")
+        self.best_image_id = best_image_id
+        self.best_image_name = best_image_name
+        self.best_points = best_points
+        # self._3Dcoordinates = _3Dcoordinates
+        # self.point_mapping = point_mapping
+        if not isinstance(plane, list) or len(plane) != 4:
+            raise ValueError("平面参数必须是一个包含4个元素的列表或数组")
+        self.check_plane_status()
 
     def check_plane_status(self):
+        print("进入check_plane_status函数")
         if self.have_plane:
-            self.wait_plane_timer.stop()
+            # self.wait_plane_timer.stop()
             self.textEditConsole.append("平面检测完成，开始校正对齐...")
             # 平面检测完成后，开始车牌对齐处理
             self.Align_according_to_LicensePlate_Worker = Align_according_to_LicensePlate_Worker(
                 self.WORK_DIR,
-                self.plane, self.best_image_name, self.best_points)
+                self.plane, self.best_image_name, self.best_points, self.to_Project)
+            # self.Align_according_to_LicensePlate_Worker = Align_according_to_LicensePlate_Worker(
+            #     self.WORK_DIR,
+            #     None, self.best_image_name, self.best_points, self.to_Project)##车牌本来也是平行地面，不投影，以免被错误的平面
             self.Align_according_to_LicensePlate_Worker.finished.connect(self.calculating_the_scale)
             self.Align_according_to_LicensePlate_Worker.start()
+        print("没有have_plane")
 
     def calculating_the_scale(self, real_distances):
         """计算比例"""
+        self.textEditConsole.append("校正对齐完成")
         if not real_distances:
             QtWidgets.QMessageBox.warning(self, "警告", "没有检测到车牌，请检查图像数据")
             return

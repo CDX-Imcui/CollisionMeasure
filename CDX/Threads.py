@@ -108,7 +108,7 @@ class Parsing_video(QtCore.QThread):
 
 
 class ColmapWorker(QtCore.QThread):
-    finished = QtCore.pyqtSignal(str)
+    # finished = QtCore.pyqtSignal(str)
     log_message = QtCore.pyqtSignal(str)  # 进度消息信号
 
     def __init__(self, source_path):
@@ -141,7 +141,7 @@ class ColmapWorker(QtCore.QThread):
             self.log_message.emit(
                 f'COLMAP reconstruction completed successfully in {int((end - start) // 60)}分{int((end - start) % 60)}秒.')
 
-            self.finished.emit(self.Colmap.point_cloud)  # 完成后去触发显示结果'point_cloud.ply'
+            # self.finished.emit(self.Colmap.point_cloud)  # 完成后去触发显示结果'point_cloud.ply'
         except Exception as e:
             # self.error.emit(str(e))
             self.log_message.emit(str(e))
@@ -152,15 +152,17 @@ from sklearn.linear_model import RANSACRegressor
 
 
 class SemanticSegmentation_Worker(QtCore.QThread):
-    finished = QtCore.pyqtSignal(bool, list, int, str, list, list)  # 成功与否，平面方程系数
+    # finished = QtCore.pyqtSignal(bool, list, int, str, list, list,dict)  # 成功与否，平面方程系数
+    finished = QtCore.pyqtSignal(bool, list, int, str, list)  # 成功与否，平面方程系数
     log_message = QtCore.pyqtSignal(str)
     updateView = QtCore.pyqtSignal(list)
 
-    def __init__(self, image_paths, WORK_DIR,now_size):
+    def __init__(self, image_paths, WORK_DIR,now_size,to_Project=None):
         super(SemanticSegmentation_Worker, self).__init__()
         self.image_paths = image_paths
         self.WORK_DIR = WORK_DIR
         self.now_size = now_size
+        self.to_Project = to_Project
 
     def remove_outliers_statistical(self, point_array, k=10, std_ratio=2.0):
         """
@@ -223,7 +225,7 @@ class SemanticSegmentation_Worker(QtCore.QThread):
     def run(self):
         try:
             catcher = lpr3.LicensePlateCatcher()
-            projector = DepthBackProjector(self.WORK_DIR)
+            projector = DepthBackProjector(self.WORK_DIR,to_Project=self.to_Project)
             best_image_id = None
             best_image_name = None
             best_image_path = None
@@ -275,19 +277,23 @@ class SemanticSegmentation_Worker(QtCore.QThread):
             image = images[0]  # 获取最优图像
             FLOOR_COLOR = [140, 140, 140]  # 注意顺序是 RGB
             ground_pixels = []
+            _3Dcoordinates = []
+            point_mapping = {}  # 创建字典存储二维点到三维点的映射
 
             # 根据分割图像，20个像素为步长遍历获取地面的特征点集合
             print("# 根据分割图像，20个像素为步长遍历获取地面的特征点集合")
             for y in range(0, image.shape[0], 20):
                 for x in range(0, image.shape[1], 20):
                     pixel = image[y, x, :]  # 获取该点 RGB
+                    print("正在遍历获取地面")
                     if np.array_equal(pixel, FLOOR_COLOR):
                         ground_pixels.append((int(round(x * (self.now_size / 640))), int(round(y * (self.now_size / 640)))))  # 记录图像坐标
 
+            print("将要遍历ground_pixels")
             projector.load_data(best_image_name)
             # 遍历ground_pixels，得到三维坐标列表
             print("# 遍历ground_pixels，得到三维坐标列表")
-            _3Dcoordinates = []
+
             for pixel in ground_pixels:
                 l, r = projector.pixel_to_world(pixel[0], pixel[1])
                 if (isinstance(l, np.ndarray) and l.size == 0) or (
@@ -295,24 +301,41 @@ class SemanticSegmentation_Worker(QtCore.QThread):
                                                                                                               -1):  # 如果像素点超出范围或深度无效
                     continue
                 x, y, z = l
+                # 将合理的二维点得到的三维点以及对应的二维点，用map保存下来
+                point_mapping[pixel] = [x, y, z]  # 保存对应关系  map[(x,y)]= [x, y, z]
                 _3Dcoordinates.append([x, y, z])  # 计算每个点的三维坐标
 
             # 根据_3Dcoordinates地面特定点拟合地面方程
             print("# 根据_3Dcoordinates地面特定点拟合地面方程")
             cleaned_points = self.remove_outliers_statistical(_3Dcoordinates, k=10, std_ratio=2.0)
+            # # 对字典也clean一遍
+            # def round_key(pt, precision=6):
+            #     return tuple(np.round(pt, decimals=precision))
+            # # 把 cleaned_points 做成一个集合，提高效率
+            # cleaned_set = set(round_key(pt) for pt in cleaned_points)
+            # # 清洗 point_mapping
+            # point_mapping = {
+            #     k: v for k, v in point_mapping.items()
+            #     if round_key(v) in cleaned_set
+            # }
+            # 对清洗后的点进行 RANSAC 平面拟合
             normal, d, inliers = self.fit_plane_ransac(cleaned_points)
             a, b, c = normal
             print(f"RANSAC 拟合平面: {a:.4f}x + {b:.4f}y + {c:.4f}z + {d:.4f} = 0")
             print(
                 f"内点数量: {np.sum(inliers)}, 平均拟合误差: {np.mean(np.abs(cleaned_points[inliers] @ normal + d)):.4f}")
-
-            self.finished.emit(True, [a, b, c, d], int(best_image_id), best_image_name, best_points, _3Dcoordinates)
+            result_map = {}
+            for (x, y), value in point_mapping.items():
+                result_map[f"{x},{y}"] = value  # 转成字符串键
+            # 发射信号，传递平面方程系数、图像ID、图像名、车牌点对、三维坐标列表和二维到三维点的映射
+            # self.finished.emit(True, [a, b, c, d], int(best_image_id), best_image_name, best_points, cleaned_points, result_map)
+            self.finished.emit(True, [a, b, c, d], int(best_image_id), best_image_name, best_points)
             self.updateView.emit(self.image_paths)  # 更新视图
-            for i in _3Dcoordinates:
+            for i in cleaned_points:
                 print(i, " - ")
             print("ground_pixels 地面特征点数量:", len(ground_pixels))
-            for i in ground_pixels:
-                print(i, " - ")
+            for i in result_map:
+                print(f"二维点 {i} 对应的三维点: {result_map[i]}")
         except Exception as e:
             self.log_message.emit(str(e))
             # self.finished.emit(False, [0, 0, 0, 0], -1, "",[])  # 如果发生错误，返回一个无效的平面方程系数
@@ -321,15 +344,18 @@ class SemanticSegmentation_Worker(QtCore.QThread):
 class Align_according_to_LicensePlate_Worker(QtCore.QThread):
     finished = QtCore.pyqtSignal(float)
 
-    def __init__(self, WORK_DIR, plane, best_image_name, best_points):
+    def __init__(self, WORK_DIR, plane, best_image_name, best_points,to_Project):
         super(Align_according_to_LicensePlate_Worker, self).__init__()
         self.WORK_DIR = WORK_DIR
-        self.plane = plane
+        self.plane = None
+        if plane is not None:
+            self.plane = plane
         self.best_image_name = best_image_name
         self.best_points = best_points
+        self.to_Project = to_Project
 
     def run(self):
-        projector = DepthBackProjector(self.WORK_DIR, self.plane)  # 投影情况下
+        projector = DepthBackProjector(self.WORK_DIR, self.plane,to_Project=self.to_Project)  # 投影情况下
         projector.load_data(self.best_image_name)
         real_distances, error = projector.compute_distance(self.best_points[0], self.best_points[1])  # 计算车牌两个点之间的距离
         self.finished.emit(real_distances)
