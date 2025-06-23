@@ -86,11 +86,13 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.image_paths = []
         self.LicensePlate = 0.47  # 米 （）
         self.max_size = 1280
-        self.now_size = None
+        self.WORK_DIR = None
+        self.already_save = False
 
         # self.to_Project = True
         self.to_Project = False
 
+        self.now_size = None
         self.Unit_distance_length = None  # （）
         self.best_image_id = None  # int （）
         self.best_image_name = None  # 'image_00059.jpg'（）
@@ -130,15 +132,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.actionSemanticSegmentation.triggered.connect(self.SemanticSegmentation)
         # self.mesure_distance.triggered.connect(self.start_measure_distance)  # 暂时先不做
         self.export_docx_Action.triggered.connect(self.export_docx)
+        self.actionSave_as.triggered.connect(self.Save_as_anotherProgram)
         # 初始化最近文件菜单
         self.updateRecentFilesMenu()
         self.import_video.triggered.connect(self.addVideo)
         self.import_images.triggered.connect(self.addImageFolder)
 
-    def init_dir(self, target_name=None):
+    def init_dir(self, WORK_DIR=None, already_save=False):
         # 初始化时设置临时工作目录
-        self.WORK_DIR = os.path.join(os.getcwd(), 'output', target_name)
+        self.WORK_DIR = WORK_DIR
+        self.already_save = already_save
         self.save_path = os.path.join(self.WORK_DIR, "save_images")
+        if self.already_save:
+            return
         cleardir_ine(self.WORK_DIR)
         cleardir_ine(os.path.join(self.WORK_DIR, "distorted"))
         cleardir_ine(os.path.join(self.WORK_DIR, "images"))
@@ -264,21 +270,24 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         MainWindow.setWindowIcon(QtGui.QIcon('_internal/measure.ico'))
 
     def saveProgram(self):
-        # 弹出项目文件保存对话框
-        options = QtWidgets.QFileDialog.Options()
-        save_dir, selected_filter = QtWidgets.QFileDialog.getSaveFileName(self, "保存项目", "",
-                                                                          options=options)
-        if not save_dir:
-            print("保存已取消")
-            return
         try:
+            if self.already_save:
+                save_dir = self.WORK_DIR
+            else:
+                # 弹出项目文件保存对话框
+                options = QtWidgets.QFileDialog.Options()
+                save_dir, selected_filter = QtWidgets.QFileDialog.getSaveFileName(self, "保存项目", "",
+                                                                                  options=options)
+                if not save_dir:
+                    print("保存已取消")
+                    return -1
+                if os.path.exists(save_dir):
+                    shutil.rmtree(save_dir)  # 如果已有同名文件夹，可选择覆盖
+                if self.WORK_DIR is None:
+                    return -1
+                shutil.copytree(self.WORK_DIR, save_dir)  # 递归复制子文件夹
+                # shutil.copytree(self.WORK_DIR, save_dir, dirs_exist_ok=True)  # 递归复制子文件夹，Python 3.8+
 
-            if os.path.exists(save_dir):
-                shutil.rmtree(save_dir)  # 如果已有同名文件夹，可选择覆盖
-            if self.WORK_DIR is None:
-                return
-            shutil.copytree(self.WORK_DIR, save_dir)  # 递归复制子文件夹
-            # shutil.copytree(self.WORK_DIR, save_dir, dirs_exist_ok=True)  # 递归复制子文件夹，Python 3.8+
             data = {
                 "plane": self.plane.tolist() if isinstance(self.plane, np.ndarray) else self.plane,
                 "have_plane": self.have_plane,
@@ -297,7 +306,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             # 保存到文件
             with open(os.path.join(save_dir, "data.json"), "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=4)
-            msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "提示", "结果已保存",
+            msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "提示", "工程已保存",
                                             QtWidgets.QMessageBox.Ok)
             msg_box.setWindowIcon(QtGui.QIcon("_internal/measure.ico"))
             msg_box.exec_()  # 显示消息框
@@ -306,8 +315,18 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.recent_files_list.append(save_dir)
                 self.recent_files_list = self.recent_files_list[-20:]  # 保持列表最后20个
                 self.updateRecentFilesMenu()  # 更新最近文件菜单
+            return 0
         except Exception as e:
             print("保存项目时出错：", e)
+
+    def Save_as_anotherProgram(self):  # 另存为（重新保存一个）
+        temp = self.already_save
+        self.already_save = False
+        f = self.saveProgram()
+        if f == -1:
+            self.already_save = temp
+            return
+        self.already_save = True
 
     def openProgram(self, open_dir=None):
         # 忽略布尔值参数
@@ -318,18 +337,19 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             if not open_dir:
                 print("打开已取消")
                 return
-        if not os.path.exists(open_dir):
+        if not os.path.exists(os.path.join(open_dir, "data.json")):
             QtWidgets.QMessageBox.warning(self, "打开错误", "项目不存在或已被删除")
             if open_dir in self.recent_files_list:
                 self.recent_files_list.remove(open_dir)
                 self.updateRecentFilesMenu()
+                self.settings.setValue('recentFiles', self.recent_files_list)  # 立即保存更改
             return
-        self.init_dir(target_name=os.path.basename(open_dir))  # 初始化工作目录
+        self.init_dir(open_dir, already_save=True)  # 初始化工作目录。直接在原工程上操作
 
-        # 清空当前 WORK_DIR，并复制新的项目内容
-        if os.path.exists(self.WORK_DIR):
-            shutil.rmtree(self.WORK_DIR)
-        shutil.copytree(open_dir, self.WORK_DIR)
+        # # 清空当前 WORK_DIR，并复制新的项目内容
+        # if os.path.exists(self.WORK_DIR):
+        #     shutil.rmtree(self.WORK_DIR)
+        # shutil.copytree(open_dir, self.WORK_DIR)
         self.openPointCloud(os.path.join(self.WORK_DIR, "point_cloud.ply"))
         json_path = os.path.join(self.WORK_DIR, "data.json")
         if os.path.exists(json_path):
@@ -354,7 +374,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             print(f"找到 {len(self.image_paths)} 张有效图像")
             self.showImages(self.image_paths)
         else:
-            self.image_paths=glob(os.path.join(self.WORK_DIR, "input", "*.jpg"))
+            self.image_paths = glob(os.path.join(self.WORK_DIR, "input", "*.jpg"))
             print("没有找到有效图像，无法显示")
         # 更新最近打开列表（可选）
         if open_dir not in self.recent_files_list:
@@ -746,8 +766,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
             video_path, _ = QtWidgets.QFileDialog.getOpenFileName(self, '选择视频', '',
                                                                   '视频文件 (*.mp4)')
-            self.init_dir(target_name=os.path.basename(video_path))  # 初始化工作目录
+            # 初始化工作目录
+            self.init_dir(os.path.join(os.getcwd(), 'output', os.path.basename(video_path)), already_save=False)
             if video_path:
+                self.image_paths = []
                 self.Parsing_video_worker = Parsing_video(video_path, self.WORK_DIR, self.image_paths,
                                                           self.max_size)  # 分辨率上限
                 self.Parsing_video_worker.finished.connect(self.showImages)
@@ -763,8 +785,9 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         if not hasattr(self, 'add_images_worker') or not self.add_images_worker.isRunning():
             folder = QtWidgets.QFileDialog.getExistingDirectory(self, '选择文件夹', '')
             if folder:
+                # 初始化工作目录
+                self.init_dir(os.path.join(os.getcwd(), 'output', os.path.basename(folder)), already_save=False)
                 # 获取文件夹内所有图像文件
-                self.init_dir(target_name=os.path.basename(folder))  # 初始化工作目录
                 self.image_paths = [os.path.join(folder, f) for f in os.listdir(folder)
                                     if
                                     os.path.isfile(os.path.join(folder, f)) and f.lower().endswith(
@@ -847,6 +870,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
 
         projector = DepthBackProjector(self.WORK_DIR, self.plane, to_Project=self.to_Project)
         projector.load_data(image_name)
+
         ##########################
         # pix2point = projector.build_pixel_to_point_map() #  dict[(u,v)] = {'point': [x,y,z], 'depth': z}
         # print(f"总共投影得到 {len(pix2point)} 个像素点 - 最近点的映射")
@@ -855,7 +879,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         #     cv2.circle(_img, (u, v), 5, (0, 0, 255), -1)
         # cv2.imwrite("aaa.jpg",_img)
         ##########################
-            # print(f"像素 ({u}, {v}) ← 最近点 {np.round(value['point'], 3)}, 深度 {value['depth']:.2f}")
+        # print(f"像素 ({u}, {v}) ← 最近点 {np.round(value['point'], 3)}, 深度 {value['depth']:.2f}")
         # for (u, v), info in list(pix2point.items())[:5]:
         #     print(f"像素 ({u}, {v}) ← 最近点 {np.round(info['point'], 3)}, 深度 {info['depth']:.2f}")
 
@@ -927,7 +951,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
                         mid_x = (ChaCoordinate[-2][0] + ChaCoordinate[-1][0]) / 2
                         mid_y = (ChaCoordinate[-2][1] + ChaCoordinate[-1][1]) / 2
                         # 在线段中点显示距离值
-                        ax.text(mid_x, max(mid_y-10,0), f"{real_distance*100:.2f}", color='red', fontsize=10,
+                        ax.text(mid_x, max(mid_y - 10, 0), f"{real_distance * 100:.2f}", color='red', fontsize=10,
                                 ha='center', va='center')
 
         cid = fig.canvas.mpl_connect('button_press_event', onclick)
@@ -1018,7 +1042,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             QtWidgets.QMessageBox.warning(self, "警告", "正在构建，请稍后")
 
     def SemanticSegmentation(self):
-        filepath=os.path.join(self.WORK_DIR, 'point_cloud.ply')
+        filepath = os.path.join(self.WORK_DIR, 'point_cloud.ply')
         for fname in os.listdir(self.WORK_DIR + "/sparse"):
             if fname == '0':
                 continue
@@ -1038,7 +1062,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         # self.wait_plane_timer.start(1000)  # 每1秒检查一次
         # self.textEditConsole.append("正在等待平面检测完成...")
 
-    def setPlane(self, have_plane, plane, best_image_id, best_image_name, best_points,):
+    def setPlane(self, have_plane, plane, best_image_id, best_image_name, best_points, ):
         """设置平面参数"""
         print("进入setPlane")
         self.have_plane = have_plane
@@ -1099,8 +1123,15 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             QtWidgets.QMessageBox.warning(self, "警告", "没有标记过的图像文件可供生成报告")
             return
         input_path = "事故报告_模板.docx"
-        output_path = "事故报告.docx"
-        current_time = datetime.now().strftime("%Y年%m月%d日%H时%M分%S秒")
+        output_path = os.path.join(self.WORK_DIR, "事故报告.docx")
+        year = datetime.now().strftime("%Y")
+        month = datetime.now().strftime("%m")
+        day = datetime.now().strftime("%d")
+        hour = datetime.now().strftime("%H")
+        minute = datetime.now().strftime("%M")
+        second = datetime.now().strftime("%S")
+        current_time = f"{year}年{month}月{day}日{hour}时{minute}分{second}秒"
+        # current_time = datetime.now().strftime("%Y年%m月%d日%H时%M分%S秒")
         address = "null"
         # 打开文档检查表格结构
         from docx import Document
@@ -1152,6 +1183,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.vtkWidget.close()
 
         self.settings.setValue('recentFiles', self.recent_files_list)  # 保存最近文件列表到设置中
+        cleardir_ine(os.path.join(os.getcwd(), 'output'))
         super().closeEvent(event)
 
 

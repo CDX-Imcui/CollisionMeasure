@@ -28,6 +28,7 @@
      <string>文件</string>
     </property>
     <addaction name="actionOpenProgram"/>
+    <addaction name="actionSave_as"/>
     <addaction name="actionSaveProgram"/>
     <addaction name="actionRecentProgram"/>
     <addaction name="actionExit"/>
@@ -77,6 +78,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="actionSave_as">
+   <property name="text">
+    <string>另存为</string>
    </property>
   </action>
  </widget>
