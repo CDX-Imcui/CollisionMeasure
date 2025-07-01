@@ -4,7 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="52a577b4-3d14-4b7f-b183-92ce1b6e320a" name="Changes" comment="2025.7.1 1.0" />
+    <list default="true" id="52a577b4-3d14-4b7f-b183-92ce1b6e320a" name="Changes" comment="2025.7.1 1.0">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CDX/MyApplication.py" beforeDir="false" afterPath="$PROJECT_DIR$/CDX/MyApplication.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CDX/Threads.py" beforeDir="false" afterPath="$PROJECT_DIR$/CDX/Threads.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/CDX/from_matrix.py" beforeDir="false" afterPath="$PROJECT_DIR$/CDX/from_matrix.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -77,10 +82,18 @@
     "node.js.selected.package.eslint": "(autodetect)",
     "node.js.selected.package.tslint": "(autodetect)",
     "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "project.propVCSSupport.DirectoryMappings",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
     "vue.rearranger.settings.migration": "true"
   }
 }]]></component>
+  <component name="PyConsoleOptionsProvider">
+    <option name="myPythonConsoleState">
+      <console-settings module-name="gaussian-splatting" is-module-sdk="true">
+        <option name="myUseModuleSdk" value="true" />
+        <option name="myModuleName" value="gaussian-splatting" />
+      </console-settings>
+    </option>
+  </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
       <recent name="D:\workspace\Python\gaussian-splatting\CDX" />
@@ -97,7 +110,7 @@
       <recent name="D:\workspace\Python\gaussian-splatting\output" />
     </key>
   </component>
-  <component name="RunManager" selected="Python.test4_look_points">
+  <component name="RunManager" selected="Python.MyApplication">
     <configuration name="MobileSAM" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="gaussian-splatting" />
       <option name="ENV_FILES" value="" />
@@ -222,9 +235,9 @@
     </list>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.MyApplication" />
         <item itemvalue="Python.test4_look_points" />
         <item itemvalue="Python.test4_look_line" />
-        <item itemvalue="Python.MyApplication" />
         <item itemvalue="Python.MobileSAM" />
         <item itemvalue="Python.MyApplication1" />
       </list>
@@ -315,7 +328,8 @@
       <workItem from="1751359404477" duration="1618000" />
       <workItem from="1751361058278" duration="6431000" />
       <workItem from="1751369771971" duration="126000" />
-      <workItem from="1751369914979" duration="1098000" />
+      <workItem from="1751369914979" duration="4151000" />
+      <workItem from="1751377740458" duration="4594000" />
     </task>
     <servers />
   </component>
@@ -351,10 +365,10 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/gaussian_splatting$test4_look_line.coverage" NAME="test4_look_line Coverage Results" MODIFIED="1751368835244" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$MyApplication1.coverage" NAME="MyApplication1 Coverage Results" MODIFIED="1750950584657" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
-    <SUITE FILE_PATH="coverage/gaussian_splatting$test4_look_points.coverage" NAME="test4_look_points Coverage Results" MODIFIED="1751369258532" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
+    <SUITE FILE_PATH="coverage/gaussian_splatting$test4_look_points.coverage" NAME="test4_look_points Coverage Results" MODIFIED="1751380379786" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$pytest_in_test_cdx_py.coverage" NAME="pytest in test_cdx.py Coverage Results" MODIFIED="1751102779035" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX/PaddleSeg-release-2.10" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$test.coverage" NAME="test Coverage Results" MODIFIED="1750732011711" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/gaussian_splatting$MyApplication.coverage" NAME="MyApplication Coverage Results" MODIFIED="1751367653931" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
+    <SUITE FILE_PATH="coverage/gaussian_splatting$MyApplication.coverage" NAME="MyApplication Coverage Results" MODIFIED="1751381964636" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$Threads.coverage" NAME="Threads Coverage Results" MODIFIED="1750695894909" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$MobileSAM.coverage" NAME="MobileSAM Coverage Results" MODIFIED="1751184750521" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
   </component>

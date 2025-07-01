@@ -1076,8 +1076,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         filepath = os.path.join(self.WORK_DIR, 'point_cloud.ply')
         self.openPointCloud(filepath)  # 打开构建完成的点云文件
         # 得到平面参数
-        self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(self.image_paths, self.WORK_DIR, self.now_size,
-                                                                       self.to_Project)
+        self.SemanticSegmentation_Worker = SemanticSegmentation_Worker(self.image_paths, self.WORK_DIR, self.now_size)
         self.SemanticSegmentation_Worker.finished.connect(self.setPlane)
         self.SemanticSegmentation_Worker.updateView.connect(self.showImages)
         self.SemanticSegmentation_Worker.start()

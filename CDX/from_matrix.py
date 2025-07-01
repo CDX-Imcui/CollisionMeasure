@@ -73,7 +73,7 @@ class DepthBackProjector:
     def world_to_pixel(self, X_world):
         if not isinstance(X_world, np.ndarray) or X_world.shape != (3,):
             print("形状为 (3,) 的 np.ndarray")
-            return -1, -1,-1
+            return -1, -1, -1
         q = self.img_data.qvec  # 四元数表示相机姿态
         t = np.array(self.img_data.tvec)  # 相机平移向量
 
@@ -84,7 +84,7 @@ class DepthBackProjector:
         # 投影到图像平面
         x, y, z = X_cam
         if z <= 0:
-            return -1, -1  ,-1# 点在相机背后或深度无效
+            return -1, -1, -1  # 点在相机背后或深度无效
 
         u = x * self.fx / z + self.cx
         v = y * self.fy / z + self.cy
@@ -164,7 +164,8 @@ class DepthBackProjector:
             p1, error1 = self.pixel_to_world(*pt1)
             p2, error2 = self.pixel_to_world(*pt2)
             # 检查点是否有效
-            if isinstance(p1, int) or isinstance(p2, int):
+            if isinstance(p1, int) or isinstance(p2, int) or (isinstance(p1, np.ndarray) and p1[0] == -1) or (
+                    isinstance(p2, np.ndarray) and p2[0] == -1):
                 return -1, -1  # 无效点
             if self.to_Project is True:
                 p1 = self.Projection(p1)
@@ -175,12 +176,14 @@ class DepthBackProjector:
             return -1, -1  # 返回-1表示计算失败
 
     def Projection(self, point):  # [x, y, z]
+        """将点投影到平面上"""
         if self.to_Project is False:
             return point
-        """将点投影到平面上"""
-        # 检查点是否有效（不是 -1）
+        if point is None:
+            return None
         if isinstance(point, int):
             return -1
+        # ！！！先计算出平面，再使用to_Project参数
         a, b, c, d = self.plane
         # 平面方程: ax + by + cz + d = 0
         x, y, z = point

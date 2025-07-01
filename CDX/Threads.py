@@ -160,12 +160,11 @@ class SemanticSegmentation_Worker(QtCore.QThread):
     log_message = QtCore.pyqtSignal(str)
     updateView = QtCore.pyqtSignal(list)
 
-    def __init__(self, image_paths, WORK_DIR, now_size, to_Project=None):
+    def __init__(self, image_paths, WORK_DIR, now_size):
         super(SemanticSegmentation_Worker, self).__init__()
         self.image_paths = image_paths
         self.WORK_DIR = WORK_DIR
         self.now_size = now_size
-        self.to_Project = to_Project
 
     def remove_outliers_statistical(self, point_array, k=10, std_ratio=2.0):
         """
@@ -228,7 +227,7 @@ class SemanticSegmentation_Worker(QtCore.QThread):
     def run(self):
         try:
             catcher = lpr3.LicensePlateCatcher()
-            projector = DepthBackProjector(self.WORK_DIR, to_Project=self.to_Project)
+            projector = DepthBackProjector(self.WORK_DIR)
             best_image_id = None
             best_image_name = None
             best_image_path = None
