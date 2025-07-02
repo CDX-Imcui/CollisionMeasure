@@ -1,2 +1,0 @@
-import diff_gaussian_rasterization
-print(diff_gaussian_rasterization.__file__)
