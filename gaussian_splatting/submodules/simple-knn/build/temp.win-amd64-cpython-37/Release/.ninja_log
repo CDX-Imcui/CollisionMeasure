@@ -1,0 +1,4 @@
+# ninja log v6
+67	7615	7722710198925453	D:/workspace/Python/gaussian-splatting/submodules/simple-knn/build/temp.win-amd64-cpython-37/Release/ext.obj	a56f25708a445fdb
+70	14682	7722710198955386	D:/workspace/Python/gaussian-splatting/submodules/simple-knn/build/temp.win-amd64-cpython-37/Release/simple_knn.obj	de44958722947216
+74	24080	7722710198990708	D:/workspace/Python/gaussian-splatting/submodules/simple-knn/build/temp.win-amd64-cpython-37/Release/spatial.obj	2a9f457a25400589
