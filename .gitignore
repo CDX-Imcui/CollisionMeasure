@@ -11,12 +11,17 @@
 /*.spec
 /*.ui
 /cdx.txt
-#/test.py
-#/test1.py
-#/test2.py
-#/test3_.py
-#/test4_look_line.py
-#/test4_look_points.py
+/cdx_readme.txt
+/jpg-txt
+/test.py
+/test1.py
+/test2.py
+/test3_.py
+/test4_look_line.py
+/test4_look_points.py
+/test4_look_points_fromTXT.py
+/test5_look_deepth_map.py
+/test6.py
 
 
 #diff_rasterization/diff_rast.egg-info
