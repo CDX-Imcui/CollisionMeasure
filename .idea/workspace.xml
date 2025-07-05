@@ -4,11 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="52a577b4-3d14-4b7f-b183-92ce1b6e320a" name="Changes" comment="2025.7.1晚上十一点，修复了self.to_Project = True投影测量时的none解包bug。先有SemanticSegmentation_Worker拟合地面方程，才有plane。投影是需要plane的，SemanticSegmentation_Worker构造参数不需要to_Project参数，否则会投影一个不存在的平面！">
-      <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/test4_look_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/test4_look_line.py" afterDir="false" />
-    </list>
+    <list default="true" id="52a577b4-3d14-4b7f-b183-92ce1b6e320a" name="Changes" comment="2025.7.1晚上十一点，修复了self.to_Project = True投影测量时的none解包bug。先有SemanticSegmentation_Worker拟合地面方程，才有plane。投影是需要plane的，SemanticSegmentation_Worker构造参数不需要to_Project参数，否则会投影一个不存在的平面！" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -230,6 +226,7 @@
       <workItem from="1751443278437" duration="10000" />
       <workItem from="1751447653952" duration="1867000" />
       <workItem from="1751685242470" duration="130000" />
+      <workItem from="1751685378798" duration="338000" />
     </task>
     <task id="LOCAL-00001" summary="2025.7.1晚上十一点，修复了self.to_Project = True投影测量时的none解包bug。先有SemanticSegmentation_Worker拟合地面方程，才有plane。投影是需要plane的，SemanticSegmentation_Worker构造参数不需要to_Project参数，否则会投影一个不存在的平面！">
       <option name="closed" value="true" />
