@@ -10,6 +10,9 @@
 /*.jpg
 /*.spec
 /*.ui
+*.ply
+*.pth
+
 /cdx.txt
 /cdx_readme.txt
 /jpg-txt

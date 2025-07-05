@@ -5,37 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="52a577b4-3d14-4b7f-b183-92ce1b6e320a" name="Changes" comment="2025.7.1晚上十一点，修复了self.to_Project = True投影测量时的none解包bug。先有SemanticSegmentation_Worker拟合地面方程，才有plane。投影是需要plane的，SemanticSegmentation_Worker构造参数不需要to_Project参数，否则会投影一个不存在的平面！">
-      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]4/shelved.patch" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]5/shelved.patch" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_5.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SemanticSegmentation/ckpt/ade20k-resnet50dilated-ppm_deepsup/decoder_epoch_20.pth" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/SemanticSegmentation/ckpt/ade20k-resnet50dilated-ppm_deepsup/encoder_epoch_20.pth" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/_internal/1.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/_internal/2.png" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00007.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00007.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00007_seg.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00011.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00011.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00011_seg.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00014.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00014.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00014_seg.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00023.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00023.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00023_seg.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00033.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00033.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00033_seg.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00048.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00048.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00048_seg.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00051.jpg" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00051.txt" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/jpg-txt/image_00051_seg.jpg" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/test4_look_line.py" beforeDir="false" afterPath="$PROJECT_DIR$/test4_look_line.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -72,7 +44,7 @@
 }</component>
   <component name="GithubPullRequestsUISettings">{
   &quot;selectedUrlAndAccountId&quot;: {
-    &quot;url&quot;: &quot;https://github.com/graphdeco-inria/gaussian-splatting.git&quot;,
+    &quot;url&quot;: &quot;git@github.com:CDX-Imcui/CollisionMeasure.git&quot;,
     &quot;accountId&quot;: &quot;689611a9-a2d9-4668-a19d-1c19e5e8b4fe&quot;
   }
 }</component>
@@ -88,31 +60,31 @@
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Python tests.pytest in test_cdx.py.executor": "Run",
-    "Python.MobileSAM.executor": "Run",
-    "Python.MyApplication.executor": "Run",
-    "Python.MyApplication1.executor": "Debug",
-    "Python.Threads.executor": "Run",
-    "Python.test.executor": "Run",
-    "Python.test4_look_line.executor": "Run",
-    "Python.test4_look_points.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "D:/workspace/Python/gaussian-splatting",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Python tests.pytest in test_cdx.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MobileSAM.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MyApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MyApplication1.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.Threads.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test4_look_line.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test4_look_points.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/workspace/Python/gaussian-splatting/SemanticSegmentation&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
       <console-settings module-name="gaussian-splatting" is-module-sdk="true">
@@ -123,11 +95,11 @@
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\workspace\Python\gaussian-splatting\SemanticSegmentation" />
       <recent name="D:\workspace\Python\gaussian-splatting\CDX" />
       <recent name="D:\workspace\Python\gaussian-splatting\CDX\lanenet-lane-detection" />
       <recent name="D:\workspace\Python\gaussian-splatting\CDX\PaddleSeg-release-2.10" />
       <recent name="D:\workspace\Python\gaussian-splatting\CDX\SemanticSegmentation" />
-      <recent name="D:\workspace\Python\gaussian-splatting" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
       <recent name="D:\workspace\Python\gaussian-splatting\_internal" />
@@ -257,6 +229,7 @@
       <workItem from="1751437309454" duration="1183000" />
       <workItem from="1751443278437" duration="10000" />
       <workItem from="1751447653952" duration="1867000" />
+      <workItem from="1751685242470" duration="130000" />
     </task>
     <task id="LOCAL-00001" summary="2025.7.1晚上十一点，修复了self.to_Project = True投影测量时的none解包bug。先有SemanticSegmentation_Worker拟合地面方程，才有plane。投影是需要plane的，SemanticSegmentation_Worker构造参数不需要to_Project参数，否则会投影一个不存在的平面！">
       <option name="closed" value="true" />
