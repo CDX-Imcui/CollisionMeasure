@@ -12,8 +12,8 @@
 import torch
 from torch import nn
 import numpy as np
-from utils.graphics_utils import getWorld2View2, getProjectionMatrix
-from utils.general_utils import PILtoTorch
+from gaussian_splatting.utils.graphics_utils import getWorld2View2, getProjectionMatrix
+from gaussian_splatting.utils.general_utils import PILtoTorch
 import cv2
 
 class Camera(nn.Module):

@@ -331,11 +331,11 @@ class SemanticSegmentation_Worker(QtCore.QThread):
             # self.finished.emit(True, [a, b, c, d], int(best_image_id), best_image_name, best_points, cleaned_points, result_map)
             self.finished.emit(True, [a, b, c, d], int(best_image_id), best_image_name, best_points)
             self.updateView.emit(self.image_paths)  # 更新视图
-            for i in cleaned_points:
-                print(i, " - ")
-            print("ground_pixels 地面特征点数量:", len(ground_pixels))
-            for i in result_map:
-                print(f"二维点 {i} 对应的三维点: {result_map[i]}")
+            # for i in cleaned_points:
+            #     print(i)
+            # print("ground_pixels 地面特征点数量:", len(ground_pixels))
+            # for i in result_map:
+            #     print(f"二维点 {i} 对应的三维点: {result_map[i]}")
         except Exception as e:
             self.log_message.emit(str(e))
             print("SemanticSegmentation_Worker 发生错误:", e)

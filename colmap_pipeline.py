@@ -108,6 +108,11 @@ class Colmap:
             f"--output_path {self.point_cloud}"
         )
         self._run_cmd(cmd, "Stereo fusion failed")
+        # 把self.source/stereo/normal_maps/下的全部文件删除
+        normal_map_path = os.path.join(self.source, "stereo/normal_maps")
+        if os.path.exists(normal_map_path):
+            shutil.rmtree(normal_map_path)
+            os.makedirs(normal_map_path, exist_ok=True)
 
     def run(self):
         try:

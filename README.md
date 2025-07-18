@@ -17,6 +17,9 @@ pip install torch==1.12.1+cu116 torchaudio==0.12.1+cu116 torchvision==0.13.1+cu1
 pip install tqdm opencv-python  joblib plyfile matplotlib  scikit-learn open3d fastapi numpy  python-docx==0.8.11 pillow 
 
 python MyApplication.py
+ 
+# 3D Gaussian Splatting
+./viewers/bin/SIBR_gaussianViewer_app -m  output/car.mp4/splat_output
 ![演示图](_internal/1.png)
 
 ![演示图](_internal/2.png)
