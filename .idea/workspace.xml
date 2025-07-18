@@ -5,24 +5,11 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="52a577b4-3d14-4b7f-b183-92ce1b6e320a" name="Changes" comment="2025.7.1晚上十一点，修复了self.to_Project = True投影测量时的none解包bug。先有SemanticSegmentation_Worker拟合地面方程，才有plane。投影是需要plane的，SemanticSegmentation_Worker构造参数不需要to_Project参数，否则会投影一个不存在的平面！">
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase_[Changes]1/shelved.patch" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_.xml" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/gaussian-splatting.iml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/gaussian-splatting.iml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MyApplication.py" beforeDir="false" afterPath="$PROJECT_DIR$/MyApplication.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Threads.py" beforeDir="false" afterPath="$PROJECT_DIR$/Threads.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/colmap_pipeline.py" beforeDir="false" afterPath="$PROJECT_DIR$/colmap_pipeline.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaussian_splatting/gaussian_renderer/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/gaussian_splatting/gaussian_renderer/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaussian_splatting/gaussian_renderer/network_gui.py" beforeDir="false" afterPath="$PROJECT_DIR$/gaussian_splatting/gaussian_renderer/network_gui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaussian_splatting/render.py" beforeDir="false" afterPath="$PROJECT_DIR$/gaussian_splatting/render.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaussian_splatting/scene/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/gaussian_splatting/scene/__init__.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaussian_splatting/scene/cameras.py" beforeDir="false" afterPath="$PROJECT_DIR$/gaussian_splatting/scene/cameras.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaussian_splatting/scene/dataset_readers.py" beforeDir="false" afterPath="$PROJECT_DIR$/gaussian_splatting/scene/dataset_readers.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaussian_splatting/scene/gaussian_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/gaussian_splatting/scene/gaussian_model.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaussian_splatting/train.py" beforeDir="false" afterPath="$PROJECT_DIR$/gaussian_splatting/train.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/gaussian_splatting/utils/camera_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/gaussian_splatting/utils/camera_utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -75,32 +62,32 @@
     <option name="showLibraryContents" value="true" />
     <option name="showMembers" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ASKED_SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "Python tests.pytest in test_cdx.py.executor": "Run",
-    "Python.MobileSAM.executor": "Run",
-    "Python.MyApplication.executor": "Run",
-    "Python.MyApplication1.executor": "Debug",
-    "Python.Threads.executor": "Run",
-    "Python.test.executor": "Run",
-    "Python.test4_look_line.executor": "Run",
-    "Python.test4_look_points.executor": "Run",
-    "Python.test4_look_points_fromTXT.executor": "Run",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "main",
-    "ignore.virus.scanning.warn.message": "true",
-    "last_opened_file_path": "D:/workspace/Python/gaussian-splatting/SemanticSegmentation",
-    "node.js.detected.package.eslint": "true",
-    "node.js.detected.package.tslint": "true",
-    "node.js.selected.package.eslint": "(autodetect)",
-    "node.js.selected.package.tslint": "(autodetect)",
-    "nodejs_package_manager_path": "npm",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable",
-    "vue.rearranger.settings.migration": "true"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ASKED_SHARE_PROJECT_CONFIGURATION_FILES&quot;: &quot;true&quot;,
+    &quot;Python tests.pytest in test_cdx.py.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MobileSAM.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MyApplication.executor&quot;: &quot;Run&quot;,
+    &quot;Python.MyApplication1.executor&quot;: &quot;Debug&quot;,
+    &quot;Python.Threads.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test4_look_line.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test4_look_points.executor&quot;: &quot;Run&quot;,
+    &quot;Python.test4_look_points_fromTXT.executor&quot;: &quot;Run&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;main&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/workspace/Python/gaussian-splatting/SemanticSegmentation&quot;,
+    &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
+    &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
+    &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
+    &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
+    &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;,
+    &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
-}]]></component>
+}</component>
   <component name="PyConsoleOptionsProvider">
     <option name="myPythonConsoleState">
       <console-settings module-name="gaussian-splatting" is-module-sdk="true">
@@ -284,7 +271,10 @@
       <workItem from="1752806581045" duration="3434000" />
       <workItem from="1752811482799" duration="248000" />
       <workItem from="1752811738543" duration="1112000" />
-      <workItem from="1752814712332" duration="4044000" />
+      <workItem from="1752814712332" duration="10197000" />
+      <workItem from="1752831826641" duration="1294000" />
+      <workItem from="1752836244959" duration="306000" />
+      <workItem from="1752841277906" duration="612000" />
     </task>
     <task id="LOCAL-00001" summary="2025.7.1晚上十一点，修复了self.to_Project = True投影测量时的none解包bug。先有SemanticSegmentation_Worker拟合地面方程，才有plane。投影是需要plane的，SemanticSegmentation_Worker构造参数不需要to_Project参数，否则会投影一个不存在的平面！">
       <option name="closed" value="true" />
@@ -334,7 +324,7 @@
     <SUITE FILE_PATH="coverage/gaussian_splatting$test4_look_points.coverage" NAME="test4_look_points Coverage Results" MODIFIED="1751438258395" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$pytest_in_test_cdx_py.coverage" NAME="pytest in test_cdx.py Coverage Results" MODIFIED="1751102779035" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX/PaddleSeg-release-2.10" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$test.coverage" NAME="test Coverage Results" MODIFIED="1750732011711" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
-    <SUITE FILE_PATH="coverage/gaussian_splatting$MyApplication.coverage" NAME="MyApplication Coverage Results" MODIFIED="1752818025620" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
+    <SUITE FILE_PATH="coverage/gaussian_splatting$MyApplication.coverage" NAME="MyApplication Coverage Results" MODIFIED="1752831876309" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$Threads.coverage" NAME="Threads Coverage Results" MODIFIED="1750695894909" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$MobileSAM.coverage" NAME="MobileSAM Coverage Results" MODIFIED="1751184750521" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/CDX" />
     <SUITE FILE_PATH="coverage/gaussian_splatting$test4_look_points_fromTXT.coverage" NAME="test4_look_points_fromTXT Coverage Results" MODIFIED="1752145215855" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="false" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$" />

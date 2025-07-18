@@ -1,4 +1,5 @@
 基于交通事故现场视频，利用 COLMAP 进行 SFM 三维重建，通过中间文件保存的相机内外参数、点云和深度图，实现图像坐标到三维点云的精准映射。
+项目后续有自动判断车道线与对象距离等部分。
 
 自动校准点云中单位长度的物理距离：  
 通过 YOLO 检测车牌位置，根据端点领域像素对应的深度值方差找到最好的车牌视角；接着计算车牌端点的对应点云距离；根据车牌固定长度换算出
@@ -17,9 +18,14 @@ pip install torch==1.12.1+cu116 torchaudio==0.12.1+cu116 torchvision==0.13.1+cu1
 pip install tqdm opencv-python  joblib plyfile matplotlib  scikit-learn open3d fastapi numpy  python-docx==0.8.11 pillow 
 
 python MyApplication.py
+
+# 打包后可以直接运行
+链接: https://pan.baidu.com/s/1co8Y5lornOERoH_Zrzx-tg?pwd=r3hn 提取码: r3hn
+构建并校准后即可点击缩略图，手动测距。
  
-# 3D Gaussian Splatting
-./viewers/bin/SIBR_gaussianViewer_app -m  output/car.mp4/splat_output
+4060显卡 构建大约30分钟
+
+
 ![演示图](_internal/1.png)
 
 ![演示图](_internal/2.png)

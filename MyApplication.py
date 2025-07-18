@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 import os, sys
+
+# os.environ["TQDM_DISABLE"] = "1"  # 为了避免打包之后的错误
 import shutil
 
-# scripts_pkg = os.path.join(os.getcwd(), "gaussian_splatting")
-# if scripts_pkg not in sys.path:
-#     sys.path.insert(0, scripts_pkg)
 import cv2
 import numpy as np
 import vtk
@@ -94,7 +93,7 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.splat_output = None
         self.already_save = False
 
-        self.to_Project = True # 去投影
+        self.to_Project = True  # 去投影
         # self.to_Project = False
 
         self.now_size = None
@@ -343,9 +342,16 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def Splat(self):
         self.textEditConsole.append("渲染...")
         self.Splat = Splat(self.WORK_DIR, self.splat_output)
-        self.Splat.finished.connect(self.textEditConsole.append)
+        self.Splat.finished.connect(self.afterSplat)
         self.Splat.log_message.connect(self.textEditConsole.append)
         self.Splat.start()
+
+    def afterSplat(self, message):
+        self.textEditConsole.append(message)
+        msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "提示", message,
+                                        QtWidgets.QMessageBox.Ok)
+        msg_box.setWindowIcon(QtGui.QIcon("_internal/measure.ico"))
+        msg_box.exec_()  # 显示消息框
 
     def openProgram(self, open_dir=None):
         # 忽略布尔值参数
@@ -1061,10 +1067,17 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
             self.textEditConsole.clear()  # 清空 textEditConsole
             self.ColmapThread = ColmapWorker(self.WORK_DIR)  # 创建一个新的线程实例
             self.ColmapThread.log_message.connect(self.textEditConsole.append)
+            self.ColmapThread.finished.connect(self.afterColmap)  # 连接线程完成信号到 SemanticSegmentation 方法
             self.ColmapThread.start()
             self.tabWidget.setCurrentIndex(2)  # 跳转到标签页3
         else:
             QtWidgets.QMessageBox.warning(self, "警告", "正在构建，请稍后")
+
+    def afterColmap(self, point_cloud_path):
+        msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "提示", "构建完成",
+                                        QtWidgets.QMessageBox.Ok)
+        msg_box.setWindowIcon(QtGui.QIcon("_internal/measure.ico"))
+        msg_box.exec_()  # 显示消息框
 
     def SemanticSegmentation(self):
         for fname in os.listdir(self.WORK_DIR + "/sparse"):
@@ -1080,7 +1093,6 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
         self.SemanticSegmentation_Worker.finished.connect(self.setPlane)
         self.SemanticSegmentation_Worker.updateView.connect(self.showImages)
         self.SemanticSegmentation_Worker.start()
-
 
     def setPlane(self, have_plane, plane, best_image_id, best_image_name, best_points, ):
         """设置平面参数"""
@@ -1116,6 +1128,10 @@ class MainWindow(QtWidgets.QMainWindow, Ui_MainWindow):
     def calculating_the_scale(self, real_distances):
         """计算比例"""
         self.textEditConsole.append("校正对齐完成")
+        msg_box = QtWidgets.QMessageBox(QtWidgets.QMessageBox.Information, "提示", "对齐完成",
+                                        QtWidgets.QMessageBox.Ok)
+        msg_box.setWindowIcon(QtGui.QIcon("_internal/measure.ico"))
+        msg_box.exec_()  # 显示消息框
         if not real_distances:
             QtWidgets.QMessageBox.warning(self, "警告", "没有检测到车牌，请检查图像数据")
             return

@@ -1,4 +1,6 @@
 import os
+
+# os.environ["TQDM_DISABLE"] = "1"  # 为了避免打包之后的错误
 import shutil
 import time
 
@@ -366,7 +368,7 @@ class Splat(QtCore.QThread):
     finished = QtCore.pyqtSignal(str)
     log_message = QtCore.pyqtSignal(str)  # 进度消息信号
 
-    def __init__(self, WORK_DIR,model_path):
+    def __init__(self, WORK_DIR, model_path):
         super(Splat, self).__init__()
         self.WORK_DIR = WORK_DIR
         self.model_path = model_path  # 输出模型路径
@@ -386,12 +388,9 @@ class Splat(QtCore.QThread):
         # # 直接调用
         # train_main(['-s', self.WORK_DIR, '-m', self.model_path, '--optimizer_type', 'sparse_adam'])
 
-
         # try:
         #
         # except Exception as e:
         #     print("render过程中出错:", e)
         #     self.finished.emit("render失败")
         #     return
-
-
